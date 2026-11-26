@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConectaVibe • Mural Corporativo & Hub de Fornecedores</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f4f6fb;
+      color: #0f172a;
+    }
+    .masonry-grid {
+      column-count: 1;
+      column-gap: 1.25rem;
+    }
+    @media (min-width: 768px) {
+      .masonry-grid { column-count: 2; }
+    }
+    @media (min-width: 1280px) {
+      .masonry-grid { column-count: 3; }
+    }
+    .masonry-item {
+      break-inside: avoid;
+      margin-bottom: 1.25rem;
+      display: inline-block;
+      width: 100%;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes pulse-eq {
+      0%, 100% { height: 6px; }
+      50% { height: 18px; }
+    }
+    .eq-bar-1 { animation: pulse-eq 0.7s infinite ease-in-out; }
+    .eq-bar-2 { animation: pulse-eq 0.5s infinite ease-in-out 0.15s; }
+    .eq-bar-3 { animation: pulse-eq 0.8s infinite ease-in-out 0.3s; }
+  </style>
+</head>
+<body class="min-h-screen w-full overflow-x-hidden bg-[#f4f6fb]">
+
+  <!-- TELA 0: PORTARIA EXCLUSIVA POR CELULAR -->
+  <div id="gateScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+    <div class="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl border border-slate-200">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#4f46e5] to-indigo-700 text-white font-black text-lg flex items-center justify-center shadow-md">
+          CV
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">ConectaVibe</h1>
+            <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-100 text-emerald-700">Portaria Ativa</span>
+          </div>
+          <p class="text-xs text-slate-500">Acesso restrito a números convidados via WhatsApp</p>
+        </div>
+      </div>
+
+      <div id="gateBootstrapNotice" class="hidden mb-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+        <strong>👑 Primeiro Acesso Detectado:</strong> A portaria está vazia. O número informado abaixo será cadastrado automaticamente como <strong>Administrador Principal</strong>.
+      </div>
+
+      <form id="gateForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Seu Celular com DDD *</label>
+          <input
+            type="tel"
+            id="gatePhoneInput"
+            placeholder="(11) 99999-9999"
+            required
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 text-base font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]"
+          />
+        </div>
+
+        <div id="gateNameGroup" class="hidden">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Seu Nome (Primeiro Acesso Admin) *</label>
+          <input
+            type="text"
+            id="gateAdminNameInput"
+            value="Diego Santos"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Código do Convite (Opcional se já liberado)</label>
+          <input
+            type="text"
+            id="gateTokenInput"
+            placeholder="Ex: CV-8492"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]"
+          />
+        </div>
+
+        <div id="gateErrorBox" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700"></div>
+
+        <button
+          type="submit"
+          id="gateSubmitBtn"
+          class="w-full py-3.5 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition cursor-pointer"
+        >
+          Validar Celular e Entrar →
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- APLICAÇÃO PRINCIPAL -->
+  <div id="appShell" class="hidden min-h-screen w-full flex flex-col">
+
+    <!-- BARRA SUPERIOR -->
+    <header class="sticky top-0 z-30 w-full bg-white/95 backdrop-blur border-b border-slate-200 px-4 lg:px-6 py-2.5">
+      <div class="w-full flex flex-wrap items-center justify-between gap-3">
+        <!-- Marca -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4f46e5] to-indigo-700 text-white font-black text-base flex items-center justify-center shadow-sm">
+            CV
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-extrabold text-slate-900 text-base tracking-tight">ConectaVibe</span>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> LIVE
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 hidden sm:block">Mural Corporativo & Hub de Fornecedores</p>
+          </div>
+        </div>
+
+        <!-- Navegação Principal (Mural vs Painel Admin) -->
+        <nav class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <button
+            id="navFeedBtn"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-[#4f46e5] shadow-sm transition cursor-pointer"
+          >
+            1. Mural Principal
+          </button>
+          <button
+            id="navAdminBtn"
+            class="hidden px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>2. Painel Admin</span>
+            <span id="pendingCountBadge" class="hidden px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-extrabold">0</span>
+          </button>
+        </nav>
+
+        <!-- Ações Direitas -->
+        <div class="flex items-center gap-2">
+          <span id="roleBadgeTop" class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-[#4f46e5] border border-indigo-100">
+            👑 Admin
+          </span>
+          <button
+            id="topNewPostBtn"
+            class="px-3.5 py-2 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+          >
+            + Nova Publicação
+          </button>
+          <button
+            id="logoutBtn"
+            title="Sair / Trocar Celular"
+            class="px-2.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-semibold transition cursor-pointer"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- LETREIRO DE NOTÍCIAS RSS AMPLIADO -->
+    <div class="w-full px-4 lg:px-6 pt-3">
+      <div class="w-full rounded-2xl bg-[#0a1026] text-white px-4 sm:px-6 py-3.5 shadow-md flex items-center justify-between gap-4 border border-slate-800">
+        <div class="flex items-center gap-3.5 min-w-0 flex-1">
+          <span class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e11d48] text-white text-[11px] font-black uppercase tracking-wider shadow">
+            <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+            AO VIVO • NOTÍCIAS
+          </span>
+          <div class="min-w-0 flex-1">
+            <a
+              id="rssHeadlineLink"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="block text-sm sm:text-base lg:text-lg font-extrabold text-white hover:text-indigo-300 truncate transition"
+            >
+              Carregando manchetes em tempo real...
+            </a>
+            <p id="rssMetaText" class="text-[11px] text-slate-400 mt-0.5">Fonte Confiável • Atualização Contínua</p>
+          </div>
+        </div>
+        <div class="shrink-0 flex items-center gap-1.5">
+          <button id="rssPrevBtn" class="w-8 h-8 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center cursor-pointer">◀</button>
+          <button id="rssPauseBtn" class="w-8 h-8 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center cursor-pointer">❚❚</button>
+          <button id="rssNextBtn" class="w-8 h-8 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center cursor-pointer">▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CORPO PRINCIPAL (SIDEBAR + CONTEÚDO EDGE-TO-EDGE) -->
+    <div class="w-full flex-1 flex flex-col lg:flex-row gap-5 px-4 lg:px-6 py-5">
+
+      <!-- BARRA LATERAL ESQUERDA -->
+      <aside class="w-full lg:w-72 shrink-0 space-y-4">
+
+        <!-- CARD DE PERFIL DO USUÁRIO -->
+        <div class="rounded-2xl bg-white p-4 border border-slate-200 shadow-sm">
+          <div class="flex items-center gap-3">
+            <div class="relative shrink-0">
+              <div
+                id="sidebarAvatarRing"
+                class="w-14 h-14 rounded-2xl p-0.5 overflow-hidden shadow-sm"
+                style="background-color: #4f46e5;"
+              >
+                <img
+                  id="sidebarAvatarImg"
+                  src=""
+                  alt="Avatar"
+                  class="w-full h-full object-cover rounded-[14px] bg-slate-100"
+                />
+              </div>
+              <span
+                id="sidebarAvatarEmoji"
+                class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white shadow border border-slate-200 flex items-center justify-center text-xs"
+              >🚀</span>
+              <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <h2 id="sidebarUserName" class="font-extrabold text-sm text-slate-900 truncate">Carregando...</h2>
+              <p id="sidebarUserSub" class="text-xs text-slate-500 truncate">Operações • CD SP</p>
+              <button
+                id="openProfileModalBtn"
+                class="mt-1 text-[11px] font-bold text-[#4f46e5] hover:underline cursor-pointer"
+              >
+                🎨 Foto, Capa & Cor
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-3 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Vibe / Status Atual</span>
+              <button id="editVibeBtn" class="text-[11px] font-bold text-[#4f46e5] hover:underline cursor-pointer">Editar</button>
+            </div>
+            <p id="sidebarVibeText" class="text-xs italic text-slate-600 bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+              "Fechando a janela de expedição com 99,6% de SLA! 🚀"
+            </p>
+          </div>
+
+          <button
+            id="sidebarNewPostBtn"
+            class="mt-3.5 w-full py-2.5 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white text-xs font-extrabold shadow-sm transition cursor-pointer"
+          >
+            + Nova Publicação
+          </button>
+        </div>
+
+        <!-- WIDGET COMPACTO: SAUDAÇÃO + RELÓGIO + UF LOCAL + CLIMA REAL -->
+        <div class="rounded-2xl bg-[#0a1026] text-white p-4 shadow-sm border border-slate-800">
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <span id="greetingText" class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-300">BOA NOITE!</span>
+            <div class="flex items-center gap-1.5">
+              <span id="localUfBadge" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 text-[11px] font-extrabold">SP</span>
+              <span id="localWeatherBadge" class="px-2 py-0.5 rounded-md bg-indigo-950/90 border border-indigo-800/60 text-indigo-200 text-[11px] font-bold">⛅ --°C</span>
+            </div>
+          </div>
+          <div id="liveClockText" class="text-2xl font-black tracking-tight tabular-nums">00:00:00</div>
+          <p id="liveDateText" class="text-[11px] text-slate-400 mt-0.5 capitalize">Carregando data...</p>
+          <div class="mt-2.5 pt-2.5 border-t border-slate-800/80 flex items-center gap-2 text-[11px] text-amber-300">
+            <span>📅</span>
+            <span id="ephemerisText" class="truncate font-medium">Operação Conectada • Brasil</span>
+          </div>
+        </div>
+
+        <!-- RÁDIO CONECTAVIBE (PLAYLIST CONTÍNUA) -->
+        <div class="rounded-2xl bg-white p-4 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">🎵 Rádio ConectaVibe</span>
+            <button
+              id="radioContinuousBtn"
+              class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 cursor-pointer"
+            >
+              🔁 Contínua: ON
+            </button>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <button
+              id="radioPlayPauseBtn"
+              class="w-9 h-9 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
+            >
+              ▶
+            </button>
+            <div class="min-w-0 flex-1">
+              <p id="radioTrackTitle" class="text-xs font-extrabold text-slate-900 truncate">Selecione ou dê Play</p>
+              <p id="radioTrackArtist" class="text-[11px] text-slate-500 truncate">Playlist da Equipe</p>
+            </div>
+            <button id="radioNextBtn" class="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer">⏭</button>
+          </div>
+          <div class="mt-2.5 flex items-center gap-2">
+            <span id="radioCurrentTime" class="text-[10px] font-mono text-slate-400">0:00</span>
+            <div id="radioProgressBar" class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden cursor-pointer">
+              <div id="radioProgressFill" class="h-full bg-[#4f46e5] w-0 transition-all"></div>
+            </div>
+            <span id="radioDurationTime" class="text-[10px] font-mono text-slate-400">0:30</span>
+          </div>
+        </div>
+
+        <!-- CATEGORIAS DO MURAL -->
+        <div class="rounded-2xl bg-white p-3.5 border border-slate-200 shadow-sm">
+          <p class="px-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Categorias do Mural</p>
+          <div id="categoryList" class="space-y-1"></div>
+        </div>
+
+      </aside>
+
+      <!-- ÁREA CENTRAL: MURAL PRINCIPAL -->
+      <main id="feedSection" class="flex-1 min-w-0">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-extrabold text-slate-900">Mural da Equipe</h1>
+              <span id="activeCategoryPill" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-[#4f46e5]">✨ Todos os Posts</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Sincronizado em tempo real via Firebase • Destaques fixados no topo</p>
+          </div>
+          <div class="w-full sm:w-72">
+            <input
+              type="search"
+              id="searchPostsInput"
+              placeholder="🔍 Buscar post, autor ou base..."
+              class="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]"
+            />
+          </div>
+        </div>
+
+        <!-- GRADE MASONRY DE POSTS -->
+        <div id="postsMasonryContainer" class="masonry-grid"></div>
+        <div id="emptyFeedState" class="hidden rounded-2xl bg-white border border-slate-200 p-10 text-center">
+          <p class="text-sm font-bold text-slate-700">Nenhuma publicação encontrada neste filtro.</p>
+          <p class="text-xs text-slate-500 mt-1">Clique em "+ Nova Publicação" para inaugurar o mural.</p>
+        </div>
+      </main>
+
+      <!-- ÁREA CENTRAL ALTERNATIVA: PAINEL ADMIN -->
+      <section id="adminSection" class="hidden flex-1 min-w-0 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <div>
+            <h1 class="text-xl font-extrabold text-slate-900">Painel do Administrador</h1>
+            <p class="text-xs text-slate-500">Controle da Portaria WhatsApp, Promoção de Admins, Fila de Fornecedores e Backup</p>
+          </div>
+          <button
+            id="exportBackupBtn"
+            class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm cursor-pointer"
+          >
+            💾 Exportar Backup (.json)
+          </button>
+        </div>
+
+        <!-- FILA DE APROVAÇÃO EXCLUSIVA PARA FORNECEDORES -->
+        <div class="rounded-2xl bg-white p-5 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-extrabold text-slate-900">🚚 Fila de Aprovação • Fornecedores</h2>
+            <span class="text-[11px] text-slate-500">Posts da equipe interna entram direto no mural</span>
+          </div>
+          <div id="supplierQueueContainer" class="space-y-3"></div>
+        </div>
+
+        <!-- PORTARIA EXCLUSIVA POR CELULAR & WHATSAPP -->
+        <div class="rounded-2xl bg-white p-5 border border-slate-200 shadow-sm">
+          <h2 class="text-sm font-extrabold text-slate-900 mb-1">📲 Portaria Exclusiva por Celular (Convite WhatsApp)</h2>
+          <p class="text-xs text-slate-500 mb-4">Somente números autorizados aqui conseguem entrar no ConectaVibe.</p>
+
+          <form id="inviteForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
+            <input
+              type="text"
+              id="invName"
+              placeholder="Nome / Transportadora *"
+              required
+              class="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold"
+            />
+            <input
+              type="tel"
+              id="invPhone"
+              placeholder="Celular: (11) 99999-9999 *"
+              required
+              class="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold"
+            />
+            <select id="invRole" class="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-white">
+              <option value="team">👷 Equipe Interna</option>
+              <option value="supplier">🚚 Fornecedor</option>
+              <option value="admin">👑 Administrador</option>
+            </select>
+            <input
+              type="text"
+              id="invBase"
+              placeholder="Base (Ex: CD GU • Guarulhos)"
+              value="CD SP • São Paulo - SP"
+              class="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium"
+            />
+            <button
+              type="submit"
+              class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm cursor-pointer"
+            >
+              + Autorizar & Gerar WhatsApp
+            </button>
+          </form>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  <th class="py-2.5 px-3">Nome / Empresa</th>
+                  <th class="py-2.5 px-3">Celular</th>
+                  <th class="py-2.5 px-3">Perfil</th>
+                  <th class="py-2.5 px-3">Base</th>
+                  <th class="py-2.5 px-3">Código</th>
+                  <th class="py-2.5 px-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="whitelistTableBody" class="divide-y divide-slate-100 text-xs"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- MODAL: NOVA PUBLICAÇÃO -->
+  <div id="newPostModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-xl rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-base font-extrabold text-slate-900">✨ Nova Publicação no Mural</h3>
+        <button id="closeNewPostModalBtn" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs cursor-pointer">✕</button>
+      </div>
+
+      <form id="newPostForm" class="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-extrabold uppercase text-slate-500 mb-1">Categoria *</label>
+            <select id="postCategoryInput" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-white"></select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-extrabold uppercase text-slate-500 mb-1">Emoji no Topo da Mídia</label>
+            <select id="postEmojiInput" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-white">
+              <option value="🚀">🚀 Foguetinho / Meta</option>
+              <option value="🚚">🚚 Frota / Expedição</option>
+              <option value="🏆">🏆 Conquista / Troféu</option>
+              <option value="📢">📢 Comunicado Oficial</option>
+              <option value="🔥">🔥 Destaque / Alta</option>
+              <option value="🎉">🎉 Celebração</option>
+              <option value="⚡">⚡ Agilidade / SLA</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ÁREA DE DESTAQUE COM TEXTO PERSONALIZADO -->
+        <div id="highlightOptionBox" class="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2.5">
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-xs font-extrabold text-amber-950">⭐ Publicar como Área de Destaque (Fixado no Topo)</span>
+            <input type="checkbox" id="postIsFeaturedInput" class="w-4 h-4 accent-amber-500 rounded" />
+          </label>
+          <div id="featuredBadgeConfig" class="hidden space-y-2 pt-1">
+            <input
+              type="text"
+              id="postFeaturedLabelInput"
+              maxlength="28"
+              value="🏆 Meta Batida"
+              placeholder="Texto do selo dourado (até 28 letras)"
+              class="w-full px-3 py-2 rounded-xl border border-amber-300 bg-white text-xs font-bold text-slate-900"
+            />
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" class="badge-preset px-2.5 py-1 rounded-full bg-white border border-amber-300 text-[11px] font-bold text-slate-800 cursor-pointer" data-val="⭐ Área de Destaque">⭐ Área de Destaque</button>
+              <button type="button" class="badge-preset px-2.5 py-1 rounded-full bg-white border border-amber-300 text-[11px] font-bold text-slate-800 cursor-pointer" data-val="🚨 Aviso Urgente">🚨 Aviso Urgente</button>
+              <button type="button" class="badge-preset px-2.5 py-1 rounded-full bg-white border border-amber-300 text-[11px] font-bold text-slate-800 cursor-pointer" data-val="🏆 Meta Batida">🏆 Meta Batida</button>
+              <button type="button" class="badge-preset px-2.5 py-1 rounded-full bg-white border border-amber-300 text-[11px] font-bold text-slate-800 cursor-pointer" data-val="🚚 Janela Extra">🚚 Janela Extra</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-extrabold uppercase text-slate-500 mb-1">Título *</label>
+          <input
+            type="text"
+            id="postTitleInput"
+            required
+            placeholder="Ex: Recorde histórico de expedição no turno!"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-900"
+          />
+        </div>
+
+        <!-- BARRA DE FORMATAÇÃO + EMOJIS -->
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-1 bg-slate-100 p-1.5 rounded-t-xl border border-b-0 border-slate-200">
+            <div class="flex items-center gap-1">
+              <button type="button" data-fmt="bold" class="fmt-btn px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-50 text-xs font-black text-slate-800 border border-slate-200 cursor-pointer" title="Negrito">B</button>
+              <button type="button" data-fmt="italic" class="fmt-btn px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-50 text-xs italic font-bold text-slate-800 border border-slate-200 cursor-pointer" title="Itálico">I</button>
+              <button type="button" data-fmt="mark" class="fmt-btn px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 text-xs font-extrabold text-slate-900 border border-amber-300 cursor-pointer" title="Marca-texto Amarelo">Destaque</button>
+              <button type="button" data-fmt="upper" class="fmt-btn px-2 py-1 rounded-lg bg-white hover:bg-indigo-50 text-xs font-bold text-slate-800 border border-slate-200 cursor-pointer" title="Caixa Alta">AA</button>
+              <button type="button" data-fmt="bullet" class="fmt-btn px-2 py-1 rounded-lg bg-white hover:bg-indigo-50 text-xs font-bold text-slate-800 border border-slate-200 cursor-pointer" title="Lista">• Lista</button>
+            </div>
+            <div class="flex items-center gap-1">
+              <button type="button" class="emoji-insert text-sm hover:scale-110 transition cursor-pointer" data-emoji="🚀">🚀</button>
+              <button type="button" class="emoji-insert text-sm hover:scale-110 transition cursor-pointer" data-emoji="🔥">🔥</button>
+              <button type="button" class="emoji-insert text-sm hover:scale-110 transition cursor-pointer" data-emoji="👏">👏</button>
+              <button type="button" class="emoji-insert text-sm hover:scale-110 transition cursor-pointer" data-emoji="🚚">🚚</button>
+              <button type="button" class="emoji-insert text-sm hover:scale-110 transition cursor-pointer" data-emoji="✅">✅</button>
+              <button type="button" class="emoji-insert text-sm hover:scale-110 transition cursor-pointer" data-emoji="🏆">🏆</button>
+            </div>
+          </div>
+          <textarea
+            id="postContentInput"
+            rows="4"
+            required
+            placeholder="Escreva a mensagem... Selecione um trecho e clique em 'Destaque' para pintar de amarelo."
+            class="w-full px-3.5 py-2.5 rounded-b-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]"
+          ></textarea>
+        </div>
+
+        <!-- UPLOAD DE FOTO OU VÍDEO CURTO -->
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="px-3.5 py-2 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-sm">
+              📷 Inserir Foto (Celular / PC)
+              <input type="file" id="postImageFileInput" accept="image/*" class="hidden" />
+            </label>
+            <label class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer shadow-sm">
+              🎬 Vídeo Curto (até 20s)
+              <input type="file" id="postVideoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" />
+            </label>
+            <button type="button" id="clearPostMediaBtn" class="hidden text-xs font-bold text-rose-600 hover:underline cursor-pointer">Remover mídia</button>
+          </div>
+          <p id="mediaUploadStatus" class="text-[11px] text-slate-500">Enquadramento automático sem cortes (foto inteira preservada).</p>
+          <div id="postMediaPreviewBox" class="hidden rounded-xl overflow-hidden bg-slate-900 max-h-56 flex items-center justify-center"></div>
+        </div>
+
+        <!-- BUSCA DE MÚSICA REAL (RÁDIO CONECTAVIBE) -->
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+          <label class="block text-[11px] font-extrabold uppercase text-slate-500">🎵 Trilha Sonora do Post (Opcional)</label>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="musicSearchInput"
+              placeholder="Buscar música ou artista (ex: Coldplay, Alok)..."
+              class="flex-1 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium"
+            />
+            <button type="button" id="musicSearchBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold cursor-pointer">Buscar</button>
+          </div>
+          <div id="musicSearchResults" class="hidden max-h-36 overflow-y-auto divide-y divide-slate-100 bg-white rounded-xl border border-slate-200"></div>
+          <div id="selectedMusicChip" class="hidden items-center justify-between px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-xs">
+            <span id="selectedMusicLabel" class="font-bold text-[#4f46e5] truncate"></span>
+            <button type="button" id="removeSelectedMusicBtn" class="text-rose-600 font-bold ml-2 cursor-pointer">✕</button>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="cancelNewPostBtn" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 cursor-pointer">Cancelar</button>
+          <button type="submit" id="submitPostBtn" class="px-5 py-2.5 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white text-xs font-extrabold shadow-md cursor-pointer">
+            Publicar Agora →
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: FOTO DE PERFIL, CAPA & PALETA -->
+  <div id="profileModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-md rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto">
+      <div class="relative h-36 bg-slate-900">
+        <img id="modalCoverPreview" src="" alt="Capa" class="w-full h-full object-cover" />
+        <button id="closeProfileModalBtn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/70 text-white text-xs font-bold flex items-center justify-center cursor-pointer">✕</button>
+      </div>
+
+      <div class="px-6 pb-6">
+        <div class="relative -mt-12 mb-4 flex justify-center">
+          <div id="modalAvatarRing" class="w-24 h-24 rounded-2xl p-1 shadow-lg" style="background-color: #4f46e5;">
+            <img id="modalAvatarPreview" src="" alt="Avatar" class="w-full h-full object-cover rounded-[14px] bg-slate-100" />
+          </div>
+          <span id="modalAvatarEmojiBadge" class="absolute -top-2 ml-20 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center text-base">🚀</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-4">
+          <label class="py-2.5 px-3 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white text-xs font-bold text-center cursor-pointer">
+            📷 Inserir Foto Perfil
+            <input type="file" id="profileAvatarFileInput" accept="image/*" class="hidden" />
+          </label>
+          <label class="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold text-center cursor-pointer">
+            🖼️ Inserir Foto Capa
+            <input type="file" id="profileCoverFileInput" accept="image/*" class="hidden" />
+          </label>
+        </div>
+
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Seu Nome</label>
+              <input type="text" id="profNameInput" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Base / Local</label>
+              <input type="text" id="profBaseInput" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Paleta de Cor em Volta da Foto</label>
+            <div id="ringColorPalette" class="flex items-center gap-2"></div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Emoji no Topo da Foto</label>
+            <div id="profileEmojiGrid" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Frase de Status / Vibe</label>
+            <input type="text" id="profVibeInput" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium" />
+          </div>
+
+          <button id="saveProfileBtn" class="w-full py-3 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white text-xs font-extrabold shadow-md cursor-pointer">
+            Salvar Alterações no Perfil
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LEITURA IMERSIVA DO POST (BARRA FIXA ACIMA DA FOTO) -->
+  <div id="readModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div class="w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto">
+      <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span id="readModalCategory" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-indigo-100 text-[#4f46e5]">Categoria</span>
+          <span id="readModalViews" class="text-xs font-semibold text-slate-500">👁️ 0</span>
+        </div>
+        <button id="closeReadModalBtn" class="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">✕ Fechar</button>
+      </div>
+      <div id="readModalBody" class="max-h-[80vh] overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: CARTÃO PÚBLICO DO AUTOR -->
+  <div id="authorCardModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="relative h-36 bg-slate-900">
+        <img id="authorCardCover" src="" alt="Capa" class="w-full h-full object-cover" />
+        <button id="closeAuthorCardBtn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/70 text-white text-xs font-bold flex items-center justify-center cursor-pointer">✕</button>
+      </div>
+      <div class="px-6 pb-6 text-center">
+        <div class="relative -mt-12 mb-3 inline-block">
+          <div id="authorCardRing" class="w-24 h-24 rounded-2xl p-1 shadow-lg mx-auto" style="background-color: #4f46e5;">
+            <img id="authorCardAvatar" src="" alt="Avatar" class="w-full h-full object-cover rounded-[14px] bg-slate-100" />
+          </div>
+          <span id="authorCardEmoji" class="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white shadow border border-slate-200 flex items-center justify-center text-base">🚀</span>
+        </div>
+        <h3 id="authorCardName" class="text-lg font-extrabold text-slate-900">Nome</h3>
+        <div class="mt-1 flex items-center justify-center gap-1.5">
+          <span id="authorCardTypeBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-[#4f46e5]">🏢 iMile Delivery</span>
+        </div>
+        <p id="authorCardBase" class="text-xs font-semibold text-slate-500 mt-2">CD SP • São Paulo - SP</p>
+        <p id="authorCardVibe" class="mt-3 text-xs italic text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">"Operação 100% conectada!"</p>
+        <button id="filterByAuthorBtn" class="mt-4 w-full py-2.5 rounded-xl bg-[#4f46e5] text-white text-xs font-extrabold cursor-pointer">
+          Ver Todas as Publicações
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LISTA DE QUEM DEU CIENTE -->
+  <div id="cientesModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-sm font-extrabold text-slate-900">✅ Confirmações de Leitura (Ciente)</h3>
+        <button id="closeCientesModalBtn" class="w-7 h-7 rounded-full bg-slate-100 text-xs font-bold cursor-pointer">✕</button>
+      </div>
+      <div id="cientesListContainer" class="p-4 max-h-80 overflow-y-auto divide-y divide-slate-100"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
