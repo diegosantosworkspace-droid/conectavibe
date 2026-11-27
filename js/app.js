@@ -1809,13 +1809,43 @@ document.getElementById("bnProfile")?.addEventListener("click", () => {
 document.getElementById("bnAdmin")?.addEventListener("click", () => {
   document.getElementById("navAdminBtn")?.click();
 });
-document.getElementById("bnVoice")?.addEventListener("click", () => {
-  document.getElementById("voiceModal")?.classList.remove("hidden");
-  renderVoiceUI();
+document.getElementById("bnRadio")?.addEventListener("click", () => {
+  document.getElementById("radioModal")?.classList.remove("hidden");
 });
 document.getElementById("closeVoiceModalBtn")?.addEventListener("click", () => {
   document.getElementById("voiceModal")?.classList.add("hidden");
 });
+
+document.getElementById("closeRadioModalBtn")?.addEventListener("click", () => {
+  document.getElementById("radioModal")?.classList.add("hidden");
+});
+
+function syncRadioModal() {
+  const t = document.getElementById("radioTrackTitle")?.textContent;
+  const a = document.getElementById("radioTrackArtist")?.textContent;
+  if (t) document.getElementById("radioTrackTitle2").textContent = t;
+  if (a) document.getElementById("radioTrackArtist2").textContent = a;
+  document.getElementById("radioCurrentTime2").textContent = document.getElementById("radioCurrentTime")?.textContent || "0:00";
+  document.getElementById("radioDurationTime2").textContent = document.getElementById("radioDurationTime")?.textContent || "0:30";
+  document.getElementById("radioProgressFill2").style.width = document.getElementById("radioProgressFill")?.style.width || "0%";
+  document.getElementById("radioPlayPauseBtn2").textContent = document.getElementById("radioPlayPauseBtn")?.textContent || "▶";
+}
+document.getElementById("radioPlayPauseBtn2")?.addEventListener("click", () => {
+  document.getElementById("radioPlayPauseBtn")?.click();
+  setTimeout(syncRadioModal, 50);
+});
+document.getElementById("radioNextBtn2")?.addEventListener("click", () => {
+  document.getElementById("radioNextBtn")?.click();
+  setTimeout(syncRadioModal, 50);
+});
+document.getElementById("radioContinuousBtn2")?.addEventListener("click", (e) => {
+  document.getElementById("radioContinuousBtn")?.click();
+  e.target.textContent = document.getElementById("radioContinuousBtn")?.textContent || "🔁 Contínua: ON";
+});
+setInterval(() => {
+  const m = document.getElementById("radioModal");
+  if (m && !m.classList.contains("hidden")) syncRadioModal();
+}, 500);
 
 document.getElementById("voicePlayAllBtn")?.addEventListener("click", playAllVoice);
 document.getElementById("voiceModalPlayAll")?.addEventListener("click", () => {
