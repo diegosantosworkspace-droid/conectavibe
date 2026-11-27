@@ -67,6 +67,15 @@ const FALLBACK_HEADLINES = [
 ];
 
 // ============================================================================
+// TRILHAS PRÉ-DEFINIDAS (fallback quando a busca iTunes falhar)
+// ============================================================================
+const PRESET_TRACKS = [
+  { title: "Energia Operacional (Lo-Fi Beat)", artist: "ConectaVibe Studio", previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+  { title: "Foco na Expedição", artist: "ConectaVibe Beats", previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+  { title: "Ritmo de Meta Batida", artist: "ConectaVibe Mix", previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" }
+];
+
+// ============================================================================
 // ESTADO GLOBAL
 // ============================================================================
 let currentUser = null;
@@ -1116,49 +1125,110 @@ document.getElementById("clearPostMediaBtn").addEventListener("click", () => {
   document.getElementById("clearPostMediaBtn").classList.add("hidden");
 });
 
-// Busca de Música Real via JSONP (iTunes API sem bloqueio CORS)
-document.getElementById("musicSearchBtn").addEventListener("click", () => {
-  const term = document.getElementById("musicSearchInput").value.trim();
-  if (!term) return;
-  const cbName = "itunesCb_" + Date.now();
-  window[cbName] = (data) => {
-    delete window[cbName];
-    const resultsBox = document.getElementById("musicSearchResults");
-    const tracks = (data.results || []).filter((t) => t.previewUrl).slice(0, 6);
-    if (tracks.length === 0) {
-      resultsBox.innerHTML = `<p class="p-3 text-xs text-slate-500">Nenhuma música encontrada.</p>`;
-    } else {
-      resultsBox.innerHTML = tracks
-        .map(
-          (t) => `
-          <button type="button" class="select-track-btn w-full px-3 py-2 text-left hover:bg-indigo-50 flex items-center justify-between gap-2 cursor-pointer"
-            data-title="${t.trackName.replace(/"/g, "&quot;")}"
-            data-artist="${t.artistName.replace(/"/g, "&quot;")}"
-            data-preview="${t.previewUrl}"
-            data-artwork="${(t.artworkUrl100 || '').replace(/"/g, "&quot;")}">
-            <div class="min-w-0">
-              <p class="text-xs font-bold text-slate-900 truncate">${t.trackName}</p>
-              <p class="text-[10px] text-slate-500 truncate">${t.artistName}</p>
-            </div>
-            <span class="text-[11px] font-bold text-[#4f46e5]">+ Usar</span>
-          </button>`
-        )
-        .join("");
-    }
-    resultsBox.classList.remove("hidden");
-    resultsBox.querySelectorAll(".select-track-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        draftMusicTrack = { title: b.dataset.title, artist: b.dataset.artist, previewUrl: b.dataset.preview, artworkUrl: b.dataset.artwork };
-        document.getElementById("selectedMusicLabel").textContent = `🎵 ${draftMusicTrack.title} — ${draftMusicTrack.artist}`;
-        document.getElementById("selectedMusicChip").classList.remove("hidden");
-        document.getElementById("selectedMusicChip").classList.add("flex");
-        resultsBox.classList.add("hidden");
-      });
-    });
+// Busca de Música (iTunes API com fallback para trilhas prontas)
+function selectMusicForPost(track) {
+  draftMusicTrack = {
+    title: track.title,
+    artist: track.artist,
+    previewUrl: track.previewUrl,
+    artworkUrl: track.artworkUrl || ""
   };
+  const chip = document.getElementById("selectedMusicChip");
+  const label = document.getElementById("selectedMusicLabel");
+  if (label && chip) {
+    label.textContent = `🎵 ${draftMusicTrack.title} — ${draftMusicTrack.artist}`;
+    chip.classList.remove("hidden");
+    chip.classList.add("flex");
+  }
+  const resultsBox = document.getElementById("musicSearchResults");
+  if (resultsBox) resultsBox.classList.add("hidden");
+}
+
+function renderMusicOptions(tracks, container, headerNote = "") {
+  container.innerHTML =
+    (headerNote ? `<p class="px-3 py-1.5 text-[10px] font-bold bg-amber-50 text-amber-800">${headerNote}</p>` : "") +
+    tracks
+      .map(
+        (t, idx) => `
+        <button type="button" data-idx="${idx}" class="pick-track-item w-full px-3 py-2 text-left hover:bg-indigo-50 flex items-center justify-between gap-2 cursor-pointer">
+          <div class="min-w-0">
+            <p class="text-xs font-bold text-slate-900 truncate">${t.title}</p>
+            <p class="text-[10px] text-slate-500 truncate">${t.artist}</p>
+          </div>
+          <span class="text-[11px] font-extrabold text-[#4f46e5] shrink-0">+ Anexar</span>
+        </button>`
+      )
+      .join("");
+
+  container.querySelectorAll(".pick-track-item").forEach((btn) => {
+    btn.addEventListener("click", () => selectMusicForPost(tracks[Number(btn.dataset.idx)]));
+  });
+}
+
+function searchMusicTracks() {
+  const input = document.getElementById("musicSearchInput");
+  const resultsBox = document.getElementById("musicSearchResults");
+  const term = (input?.value || "").trim();
+  if (!term || !resultsBox) return;
+
+  resultsBox.innerHTML = `<p class="p-3 text-xs text-slate-500">Buscando "${term}"...</p>`;
+  resultsBox.classList.remove("hidden");
+
+  const cbName = "itunesCb_" + Date.now();
+  let completed = false;
+
+  const timer = setTimeout(() => {
+    if (completed) return;
+    completed = true;
+    delete window[cbName];
+    renderMusicOptions(PRESET_TRACKS, resultsBox, "Busca externa indisponível — escolha uma trilha pronta:");
+  }, 4500);
+
+  window[cbName] = (data) => {
+    if (completed) return;
+    completed = true;
+    clearTimeout(timer);
+    delete window[cbName];
+
+    const tracks = (data.results || [])
+      .filter((t) => t.previewUrl)
+      .slice(0, 6)
+      .map((t) => ({
+        title: t.trackName,
+        artist: t.artistName,
+        previewUrl: t.previewUrl,
+        artworkUrl: t.artworkUrl100 || ""
+      }));
+
+    if (tracks.length === 0) {
+      renderMusicOptions(PRESET_TRACKS, resultsBox, "Nenhum resultado exato — trilhas prontas:");
+    } else {
+      renderMusicOptions(tracks, resultsBox);
+    }
+  };
+
   const script = document.createElement("script");
   script.src = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&limit=8&callback=${cbName}`;
+  script.onerror = () => {
+    if (completed) return;
+    completed = true;
+    clearTimeout(timer);
+    renderMusicOptions(PRESET_TRACKS, resultsBox, "Sem resposta da API — trilhas prontas:");
+  };
   document.body.appendChild(script);
+}
+
+// Evita envio acidental do post ao pressionar Enter na busca de música
+document.getElementById("musicSearchInput")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    searchMusicTracks();
+  }
+});
+
+document.getElementById("musicSearchBtn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  searchMusicTracks();
 });
 
 document.getElementById("removeSelectedMusicBtn").addEventListener("click", () => {
@@ -2124,50 +2194,90 @@ let radioIndex = 0;
 let radioContinuous = true;
 
 function rebuildRadioQueue() {
-  radioQueue = getVisiblePosts()
+  const fromPosts = getVisiblePosts()
     .filter((p) => p.musicTrack && p.musicTrack.previewUrl)
-    .map((p) => p.musicTrack);
-  // Atualiza o card da radio com a primeira faixa (se houver)
-  const titleEl = document.getElementById("radioTrackTitle");
-  const artistEl = document.getElementById("radioTrackArtist");
-  const idxEl = document.getElementById("radioPlaylistIndex");
+    .map((p) => ({
+      ...p.musicTrack,
+      authorName: p.authorName || "Equipe"
+    }));
+
+  radioQueue = fromPosts.length > 0 ? fromPosts : PRESET_TRACKS.map((t) => ({ ...t, authorName: "Rádio ConectaVibe" }));
+
   const playBtn = document.getElementById("radioPlayPauseBtn");
-  if (radioQueue.length > 0) {
+  if (playBtn) {
+    playBtn.disabled = false;
+    playBtn.classList.remove("opacity-50", "cursor-not-allowed");
+  }
+
+  const counterEl = document.getElementById("radioPlaylistIndex");
+  if (counterEl && radioQueue.length > 0) {
+    counterEl.textContent = `Faixa ${Math.min(radioIndex + 1, radioQueue.length)} de ${radioQueue.length}`;
+  }
+
+  if (audioPlayer.paused && radioQueue.length > 0) {
+    const titleEl = document.getElementById("radioTrackTitle");
+    const artistEl = document.getElementById("radioTrackArtist");
     if (titleEl) titleEl.textContent = radioQueue[0].title;
     if (artistEl) artistEl.textContent = radioQueue[0].artist;
-    if (idxEl) idxEl.textContent = `Faixa 1 de ${radioQueue.length}`;
-    if (playBtn) { playBtn.disabled = false; playBtn.classList.remove("opacity-50"); }
-  } else {
-    if (titleEl) titleEl.textContent = "Nenhuma música anexada";
-    if (artistEl) artistEl.textContent = "Anexe músicas aos posts para tocar";
-    if (idxEl) idxEl.textContent = "Faixa 0 de 0";
-    if (playBtn) { playBtn.disabled = true; playBtn.classList.add("opacity-50"); }
+  }
+
+  // Atualiza o card "TRILHAS DO MURAL" logo abaixo da rádio
+  const trilhasBox = document.getElementById("tracksList");
+  if (trilhasBox) {
+    trilhasBox.innerHTML = radioQueue
+      .map(
+        (t, i) => `
+        <button type="button" data-qidx="${i}" class="play-queue-item w-full py-2 px-2.5 rounded-xl hover:bg-indigo-50 flex items-center justify-between gap-2 text-left cursor-pointer">
+          <div class="min-w-0">
+            <p class="text-xs font-bold text-slate-900 truncate">${i + 1}. ${t.title}</p>
+            <p class="text-[10px] text-slate-500 truncate">${t.artist} • ${t.authorName}</p>
+          </div>
+          <span class="text-xs font-extrabold text-[#4f46e5]">▶</span>
+        </button>`
+      )
+      .join("");
+
+    trilhasBox.querySelectorAll(".play-queue-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        radioIndex = Number(btn.dataset.qidx);
+        playTrack(radioQueue[radioIndex]);
+      });
+    });
   }
 }
 
+audioPlayer.preload = "none";
+
 function playTrack(track) {
   if (!track || !track.previewUrl) return;
-  activeMusicBtn = null;
-  document.querySelectorAll(".play-post-music, .track-play-btn").forEach((b) => {
-    const span = b.classList.contains("track-play-btn") ? b.querySelector("span:last-child") : b;
-    if (span) span.textContent = "▶";
-  });
+  audioPlayer.pause();
   audioPlayer.src = track.previewUrl;
-  audioPlayer.play().catch(() => {});
-  const titleEl = document.getElementById("radioTrackTitle");
-  const artistEl = document.getElementById("radioTrackArtist");
-  const coverImg = document.getElementById("radioCoverImg");
-  const vinylIcon = document.getElementById("radioVinylIcon");
-  if (titleEl) titleEl.textContent = track.title;
-  if (artistEl) artistEl.textContent = track.artist;
-  if (coverImg && track.artworkUrl) { coverImg.src = track.artworkUrl; coverImg.classList.remove("hidden"); if (vinylIcon) vinylIcon.classList.add("hidden"); }
-  else { if (coverImg) coverImg.classList.add("hidden"); if (vinylIcon) vinylIcon.classList.remove("hidden"); }
-  const playBtn = document.getElementById("radioPlayPauseBtn");
-  if (playBtn) playBtn.textContent = "❚❚";
-  const eq = document.getElementById("radioEqBars");
-  if (eq) eq.classList.add("eq-playing");
-  const idx = document.getElementById("radioPlaylistIndex");
-  if (idx) idx.textContent = `Faixa ${radioIndex + 1} de ${radioQueue.length}`;
+  audioPlayer.load();
+
+  const playPromise = audioPlayer.play();
+  if (playPromise !== undefined) {
+    playPromise
+      .then(() => {
+        document.getElementById("radioTrackTitle").textContent = track.title;
+        document.getElementById("radioTrackArtist").textContent = track.artist;
+        document.getElementById("radioPlayPauseBtn").textContent = "❚❚";
+        const counterEl = document.getElementById("radioPlaylistIndex");
+        if (counterEl) {
+          counterEl.textContent = `Faixa ${radioIndex + 1} de ${radioQueue.length}`;
+        }
+        const coverImg = document.getElementById("radioCoverImg");
+        const vinylIcon = document.getElementById("radioVinylIcon");
+        if (coverImg && track.artworkUrl) { coverImg.src = track.artworkUrl; coverImg.classList.remove("hidden"); if (vinylIcon) vinylIcon.classList.add("hidden"); }
+        else { if (coverImg) coverImg.classList.add("hidden"); if (vinylIcon) vinylIcon.classList.remove("hidden"); }
+        const eq = document.getElementById("radioEqBars");
+        if (eq) eq.classList.add("eq-playing");
+      })
+      .catch((err) => {
+        console.warn("Reprodução bloqueada ou link expirado:", err);
+        document.getElementById("radioTrackArtist").textContent = "Toque novamente em Play para liberar o áudio";
+        document.getElementById("radioPlayPauseBtn").textContent = "▶";
+      });
+  }
 }
 
 document.getElementById("radioPlayPauseBtn")?.addEventListener("click", () => {
