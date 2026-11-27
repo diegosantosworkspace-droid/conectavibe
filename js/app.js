@@ -370,7 +370,7 @@ function applyRoleUI() {
       <option value="Negócios">📈 Negócios</option>
       <option value="Diversão">🎉 Diversão</option>
     `;
-  } else if (currentUser.role === "fornecedor") {
+  } else if (currentUser.role === "fornecedor" || currentUser.role === "supplier") {
     badgeTop.textContent = "🚚 Fornecedor";
     navAdmin.classList.add("hidden");
     highlightBox.classList.add("hidden");
@@ -460,16 +460,22 @@ function startRealtimeListeners() {
   // (recados_voz removido - substituido por Trilhas do Mural)
 }
 
+function isApprovedStatus(s) {
+  return s === "aprovado" || s === "approved";
+}
+function isPendingStatus(s) {
+  return s === "pendente" || s === "pending";
+}
 function getVisiblePosts() {
   return allPosts.filter((p) => {
-    if (p.status !== "aprovado") return false;
+    if (!isApprovedStatus(p.status)) return false;
     if (currentUser.role === "fornecedor" && p.category === "Trabalho") return false;
     return true;
   });
 }
 
 function updatePendingCounter() {
-  const pending = allPosts.filter((p) => p.status === "pendente");
+  const pending = allPosts.filter((p) => isPendingStatus(p.status));
   const badge = document.getElementById("pendingCountBadge");
   if (pending.length > 0) {
     badge.textContent = pending.length;
@@ -729,8 +735,8 @@ function buildPostCardHTML(post) {
               <div class="flex items-center gap-1.5">
                 <span class="text-xs font-extrabold text-slate-900 truncate">${escapeHtml(post.authorName)}</span>
                 <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                  post.authorRole === "fornecedor" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-[#4f46e5]"
-                }">${post.authorRole === "fornecedor" ? "🚚 Parceiro" : "🏢 iMile"}</span>
+                  (post.authorRole === "fornecedor" || post.authorRole === "supplier") ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-[#4f46e5]"
+                }">${(post.authorRole === "fornecedor" || post.authorRole === "supplier") ? "🚚 Parceiro" : "🏢 iMile"}</span>
               </div>
               <p class="text-[11px] text-slate-500 truncate">${escapeHtml(post.authorBase || "CD SP")} • ${escapeHtml(post.timeLabel || "Agora")}</p>
             </div>
@@ -909,7 +915,7 @@ function bindPostCardEvents() {
       document.getElementById("authorCardEmoji").textContent = data.avatarEmoji || "🚀";
       document.getElementById("authorCardName").textContent = data.name;
       document.getElementById("authorCardTypeBadge").textContent =
-        data.role === "fornecedor" ? "🚚 Transportador / Parceiro" : "🏢 iMile Delivery";
+        (data.role === "fornecedor" || data.role === "supplier") ? "🚚 Transportador / Parceiro" : "🏢 iMile Delivery";
       document.getElementById("authorCardBase").textContent = data.base;
       document.getElementById("authorCardVibe").textContent = `"${data.vibe || "Operação 100% conectada!"}"`;
 
@@ -1127,7 +1133,7 @@ document.getElementById("removeSelectedMusicBtn").addEventListener("click", () =
 
 document.getElementById("newPostForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const isSupplier = currentUser.role === "fornecedor";
+  const isSupplier = currentUser.role === "fornecedor" || currentUser.role === "supplier";
   const isFeatured = !isSupplier && document.getElementById("postIsFeaturedInput").checked;
   const nowStr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
@@ -1285,7 +1291,7 @@ document.getElementById("navAdminBtn").addEventListener("click", () => {
 
 function renderSupplierQueue() {
   const box = document.getElementById("supplierQueueContainer");
-  const pending = allPosts.filter((p) => p.status === "pendente");
+  const pending = allPosts.filter((p) => isPendingStatus(p.status));
   if (pending.length === 0) {
     box.innerHTML = `<p class="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl">Nenhum post de fornecedor aguardando aprovação no momento.</p>`;
     return;
