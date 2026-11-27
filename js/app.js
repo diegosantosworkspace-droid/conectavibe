@@ -769,7 +769,8 @@ function buildPostCardHTML(post) {
       </div>`
     : "";
 
-  const adminDeleteBtn = currentUser.role === "admin"
+  const canDelete = currentUser.role === "admin" || post.authorPhone === currentUser.phone || post.authorUid === currentUser.uid;
+  const adminDeleteBtn = canDelete
     ? `<button type="button" class="delete-post-btn text-[11px] font-bold text-rose-500 hover:underline cursor-pointer" data-id="${post.id}">Excluir</button>`
     : "";
 
