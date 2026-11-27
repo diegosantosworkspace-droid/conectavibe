@@ -506,10 +506,10 @@ function startRealtimeListeners() {
     renderCategories();
     renderFeed();
     renderSupplierQueue();
-    // Seed de demonstracao (apenas admin, uma vez) para o mural nao ficar vazio
+    // Seed de demonstracao (apenas admin) para o mural nao ficar vazio
     if (allPosts.length === 0 && currentUser?.role === "admin" && !localStorage.getItem("cv_seeded")) {
       localStorage.setItem("cv_seeded", "1");
-      seedDemoPosts().catch(() => {});
+      seedDemoPosts().then(() => console.log("Seed de posts criado.")).catch((e) => console.error("Seed falhou:", e));
     }
   });
 
@@ -571,7 +571,7 @@ async function seedDemoPosts() {
       isFeatured: false,
       featuredLabel: "",
       imageUrl: null,
-      musicTrack: null,
+      musicTrack: { title: "Foco na Expedição", artist: "ConectaVibe Beats", previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", artworkUrl: "" },
       offset: 1 * 24 * 60 * 60 * 1000
     },
     {

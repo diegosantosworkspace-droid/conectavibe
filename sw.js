@@ -1,4 +1,4 @@
-const CACHE = "conectavibe-v2";
+const CACHE = "conectavibe-v3";
 const STATIC = ["/", "/index.html", "/manifest.json", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
