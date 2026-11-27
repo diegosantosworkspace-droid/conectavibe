@@ -222,7 +222,8 @@ async function initGate() {
   const snap = await getDocs(collection(db, "whitelist"));
   whitelistEntries = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-  if (whitelistEntries.length === 0) {
+  const hasAdmin = whitelistEntries.some((w) => w.role === "admin" || w.role === "administrador");
+  if (whitelistEntries.length === 0 || !hasAdmin) {
     document.getElementById("gateBootstrapNotice").classList.remove("hidden");
     document.getElementById("gateNameGroup").classList.remove("hidden");
   }
@@ -297,8 +298,30 @@ document.getElementById("gateForm").addEventListener("submit", async (e) => {
     }
 
     const entry = whitelistEntries.find((w) => w.id === phoneNorm);
+    // Recuperacao: se nao houver nenhum admin cadastrado, o proximo login vira admin (bootstrap de emergencia)
+    const hasAdmin = whitelistEntries.some((w) => w.role === "admin" || w.role === "administrador");
+    if (!entry && !hasAdmin) {
+      await ensureAuth();
+      const rescueAdmin = {
+        name: document.getElementById("gateAdminNameInput").value.trim() || "Administrador",
+        phone: phoneNorm,
+        role: "admin",
+        company: "iMile Delivery",
+        base: "CD SP • São Paulo - SP",
+        token: "ADMIN01",
+        active: true,
+        avatarUrl: DEFAULT_AVATAR,
+        coverUrl: DEFAULT_COVER,
+        ringColor: "#4f46e5",
+        avatarEmoji: "👑",
+        vibe: "Liderando a operação conectada! 🚀"
+      };
+      await setDoc(doc(db, "whitelist", phoneNorm), rescueAdmin);
+      await completeLogin({ id: phoneNorm, ...rescueAdmin });
+      return;
+    }
     if (!entry || entry.active === false) {
-      errBox.textContent = "⛔ Acesso Negado: Este celular não consta na lista de convidados autorizados.";
+      errBox.textContent = "⛔ Acesso Negado: Este celular não consta na lista de convidados autorizados. Peça a um Administrador para cadastrar o número 11974706313.";
       errBox.classList.remove("hidden");
       btn.disabled = false;
       btn.textContent = "Validar Celular e Entrar →";
