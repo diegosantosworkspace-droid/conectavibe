@@ -445,6 +445,11 @@ function startRealtimeListeners() {
     renderCategories();
     renderFeed();
     renderSupplierQueue();
+    // Seed de demonstracao (apenas admin, uma vez) para o mural nao ficar vazio
+    if (allPosts.length === 0 && currentUser?.role === "admin" && !localStorage.getItem("cv_seeded")) {
+      localStorage.setItem("cv_seeded", "1");
+      seedDemoPosts().catch(() => {});
+    }
   });
 
   onSnapshot(collection(db, "whitelist"), (snapshot) => {
@@ -477,6 +482,73 @@ function updatePendingCounter() {
 // ============================================================================
 // RENDERIZAÇÃO DO FEED MASONRY (DESTAQUES FIXADOS NO TOPO)
 // ============================================================================
+async function seedDemoPosts() {
+  const now = Date.now();
+  const samples = [
+    {
+      title: "Recorde histórico de expedição no turno da noite! 🚀",
+      content: "A equipe bateu **1.240 pedidos** expedidos com **99,6% de SLA**. Parabéns a todos os operadores e conferentes! 🔥",
+      category: "Trabalho",
+      topEmoji: "🚀",
+      isFeatured: true,
+      featuredLabel: "🏆 Meta Batida",
+      imageUrl: null,
+      musicTrack: null,
+      offset: 0
+    },
+    {
+      title: "Chegada da frota parceira — janela extra de descarga",
+      content: "Transportadora **ABC Log** confirmou janela extra das 22h às 02h. Docas 4 a 7 liberadas. 🚚",
+      category: "Fornecedores",
+      topEmoji: "🚚",
+      isFeatured: false,
+      featuredLabel: "",
+      imageUrl: null,
+      musicTrack: null,
+      offset: 1 * 24 * 60 * 60 * 1000
+    },
+    {
+      title: "Confraternização de fim de ano — inscrições abertas",
+      content: "Participe da celebração da equipe! Inscrições até sexta. 🎉",
+      category: "Diversão",
+      topEmoji: "🎉",
+      isFeatured: false,
+      featuredLabel: "",
+      imageUrl: null,
+      musicTrack: null,
+      offset: 2 * 24 * 60 * 60 * 1000
+    }
+  ];
+  for (const s of samples) {
+    const ts = now - s.offset;
+    await addDoc(collection(db, "posts"), {
+      authorUid: currentUser.uid,
+      authorPhone: currentUser.phone,
+      authorName: currentUser.name,
+      authorRole: currentUser.role,
+      authorBase: currentUser.base,
+      authorAvatar: currentUser.avatarUrl,
+      authorRingColor: currentUser.ringColor,
+      category: s.category,
+      topEmoji: s.topEmoji,
+      isFeatured: s.isFeatured,
+      featuredLabel: s.featuredLabel,
+      title: s.title,
+      content: s.content,
+      imageUrl: s.imageUrl,
+      videoUrl: null,
+      musicTrack: s.musicTrack,
+      status: currentUser.role === "fornecedor" ? "pendente" : "aprovado",
+      views: Math.floor(Math.random() * 40) + 5,
+      reactions: { "🔥": Math.floor(Math.random() * 12), "👏": Math.floor(Math.random() * 8), "🚀": Math.floor(Math.random() * 6), "❤️": Math.floor(Math.random() * 4) },
+      cientes: [],
+      timeLabel: new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      createdAt: serverTimestamp(),
+      createdAtMs: ts
+    });
+  }
+}
+
 function dayKey(ms) {
   const d = new Date(ms || Date.now());
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
