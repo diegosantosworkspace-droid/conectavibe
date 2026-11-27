@@ -83,7 +83,6 @@ let draftMusicTrack = null;
 // Rádio Contínua
 const audioPlayer = new Audio();
 const storage = getStorage();
-let radioQueue = [];
 let activeMusicBtn = null;
 
 // Bip de radio comunicador (Web Audio API)
@@ -122,8 +121,6 @@ const musicObserver = new IntersectionObserver((entries) => {
     }
   });
 }, { threshold: 0.05 });
-let radioIndex = 0;
-let radioContinuous = true;
 
 // RSS Ticker
 let rssHeadlines = [...FALLBACK_HEADLINES];
@@ -444,6 +441,7 @@ function startRealtimeListeners() {
   onSnapshot(postsQuery, (snapshot) => {
     allPosts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
     updatePendingCounter();
+    rebuildRadioQueue();
     renderCategories();
     renderFeed();
     renderSupplierQueue();
@@ -1974,6 +1972,140 @@ window.addEventListener("touchend", (e) => {
 // ===== PERSISTÊNCIA DE SESSÃO =====
 // (cv_logged_phone já é salvo; adiciona uid para referência)
 // completeLogin já salva cv_logged_phone; adicionamos cv_logged_uid lá.
+
+// ============================================================================
+// RÁDIO CONECTAVIBE (PLAYLIST CONTÍNUA)
+// ============================================================================
+let radioQueue = [];
+let radioIndex = 0;
+let radioContinuous = true;
+
+function rebuildRadioQueue() {
+  radioQueue = getVisiblePosts()
+    .filter((p) => p.musicTrack && p.musicTrack.previewUrl)
+    .map((p) => p.musicTrack);
+}
+
+function playTrack(track) {
+  if (!track || !track.previewUrl) return;
+  activeMusicBtn = null;
+  document.querySelectorAll(".play-post-music, .track-play-btn").forEach((b) => {
+    const span = b.classList.contains("track-play-btn") ? b.querySelector("span:last-child") : b;
+    if (span) span.textContent = "▶";
+  });
+  audioPlayer.src = track.previewUrl;
+  audioPlayer.play().catch(() => {});
+  const titleEl = document.getElementById("radioTrackTitle");
+  const artistEl = document.getElementById("radioTrackArtist");
+  const coverImg = document.getElementById("radioCoverImg");
+  const vinylIcon = document.getElementById("radioVinylIcon");
+  if (titleEl) titleEl.textContent = track.title;
+  if (artistEl) artistEl.textContent = track.artist;
+  if (coverImg && track.artworkUrl) { coverImg.src = track.artworkUrl; coverImg.classList.remove("hidden"); if (vinylIcon) vinylIcon.classList.add("hidden"); }
+  else { if (coverImg) coverImg.classList.add("hidden"); if (vinylIcon) vinylIcon.classList.remove("hidden"); }
+  const playBtn = document.getElementById("radioPlayPauseBtn");
+  if (playBtn) playBtn.textContent = "❚❚";
+  const eq = document.getElementById("radioEqBars");
+  if (eq) eq.classList.add("eq-playing");
+  const idx = document.getElementById("radioPlaylistIndex");
+  if (idx) idx.textContent = `Faixa ${radioIndex + 1} de ${radioQueue.length}`;
+}
+
+document.getElementById("radioPlayPauseBtn")?.addEventListener("click", () => {
+  if (!audioPlayer.src && radioQueue.length > 0) {
+    playTrack(radioQueue[0]);
+    return;
+  }
+  if (audioPlayer.paused) {
+    audioPlayer.play().catch(() => {});
+    const b = document.getElementById("radioPlayPauseBtn"); if (b) b.textContent = "❚❚";
+    const eq = document.getElementById("radioEqBars"); if (eq) eq.classList.add("eq-playing");
+  } else {
+    audioPlayer.pause();
+    const b = document.getElementById("radioPlayPauseBtn"); if (b) b.textContent = "▶";
+    const eq = document.getElementById("radioEqBars"); if (eq) eq.classList.remove("eq-playing");
+  }
+});
+
+document.getElementById("radioNextBtn")?.addEventListener("click", () => {
+  if (radioQueue.length === 0) return;
+  radioIndex = (radioIndex + 1) % radioQueue.length;
+  playTrack(radioQueue[radioIndex]);
+});
+
+document.getElementById("radioPrevBtn")?.addEventListener("click", () => {
+  if (radioQueue.length === 0) return;
+  radioIndex = (radioIndex - 1 + radioQueue.length) % radioQueue.length;
+  playTrack(radioQueue[radioIndex]);
+});
+
+document.getElementById("radioContinuousBtn")?.addEventListener("click", (e) => {
+  radioContinuous = !radioContinuous;
+  e.target.textContent = radioContinuous ? "🔁 Contínua: ON" : "🔁 Contínua: OFF";
+});
+
+audioPlayer.addEventListener("ended", () => {
+  if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; activeMusicBtn = null; }
+  syncPlayButtons();
+  const eq = document.getElementById("radioEqBars");
+  if (radioContinuous && radioQueue.length > 0) {
+    radioIndex = (radioIndex + 1) % radioQueue.length;
+    playTrack(radioQueue[radioIndex]);
+  } else {
+    const b = document.getElementById("radioPlayPauseBtn"); if (b) b.textContent = "▶";
+    if (eq) eq.classList.remove("eq-playing");
+  }
+});
+
+audioPlayer.addEventListener("pause", () => {
+  if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; }
+  const b = document.getElementById("radioPlayPauseBtn"); if (b) b.textContent = "▶";
+  const eq = document.getElementById("radioEqBars"); if (eq) eq.classList.remove("eq-playing");
+  syncPlayButtons();
+});
+
+audioPlayer.addEventListener("play", () => {
+  if (activeMusicBtn) {
+    document.querySelectorAll(".play-post-music, .track-play-btn").forEach((btn) => {
+      if (btn !== activeMusicBtn) {
+        const span = btn.classList.contains("track-play-btn") ? btn.querySelector("span:last-child") : btn;
+        if (span) span.textContent = "▶";
+      }
+    });
+    activeMusicBtn.textContent = "❚❚";
+  }
+  const b = document.getElementById("radioPlayPauseBtn"); if (b) b.textContent = "❚❚";
+  const eq = document.getElementById("radioEqBars"); if (eq) eq.classList.add("eq-playing");
+  syncPlayButtons();
+});
+
+audioPlayer.addEventListener("timeupdate", () => {
+  const cur = audioPlayer.currentTime || 0;
+  const dur = audioPlayer.duration || 0;
+  const pct = dur ? (cur / dur) * 100 : 0;
+  const fill = document.getElementById("radioProgressFill");
+  if (fill) fill.style.width = `${pct}%`;
+  const tc = document.getElementById("radioTimeCurrent");
+  if (tc) tc.textContent = `${Math.floor(cur/60)}:${String(Math.floor(cur%60)).padStart(2,'0')}`;
+  const td = document.getElementById("radioTimeDuration");
+  if (td) td.textContent = `${Math.floor(dur/60)}:${String(Math.floor(dur%60)).padStart(2,'0')}`;
+});
+
+const radioVol = document.getElementById("radioVolume");
+if (radioVol) {
+  radioVol.addEventListener("input", (e) => { audioPlayer.volume = parseFloat(e.target.value); });
+  audioPlayer.volume = parseFloat(radioVol.value);
+}
+
+const radioBar = document.getElementById("radioProgressBar");
+if (radioBar) {
+  radioBar.addEventListener("click", (e) => {
+    if (!audioPlayer.duration) return;
+    const rect = radioBar.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audioPlayer.currentTime = pct * audioPlayer.duration;
+  });
+}
 
 // Inicializar
 initGate();

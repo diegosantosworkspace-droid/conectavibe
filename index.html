@@ -361,6 +361,61 @@
           </div>
         </div>
 
+        <!-- RÁDIO CONECTAVIBE (player contínuo com áudio real) -->
+        <div class="rounded-2xl bg-white p-4 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between gap-2 mb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-800">Rádio ConectaVibe</h3>
+            </div>
+            <button id="radioContinuousBtn" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-[#4f46e5] border border-indigo-200 cursor-pointer">
+              🔁 Contínua: ON
+            </button>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+            <div class="flex items-center gap-3">
+              <div class="relative w-11 h-11 rounded-xl bg-[#0a1026] text-white flex items-center justify-center shrink-0 overflow-hidden">
+                <img id="radioCoverImg" src="" alt="" class="hidden w-full h-full object-cover" />
+                <span id="radioVinylIcon" class="text-lg">🎧</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div id="radioTrackTitle" class="text-xs font-extrabold text-slate-900 truncate">Selecione ou dê Play</div>
+                <div id="radioTrackArtist" class="text-[11px] text-slate-500 truncate">Playlist da Equipe</div>
+              </div>
+              <div id="radioEqBars" class="flex items-end gap-0.5 h-4 shrink-0">
+                <span class="w-1 bg-[#4f46e5] rounded-full h-1.5"></span>
+                <span class="w-1 bg-[#4f46e5] rounded-full h-3"></span>
+                <span class="w-1 bg-[#4f46e5] rounded-full h-2"></span>
+                <span class="w-1 bg-[#4f46e5] rounded-full h-2.5"></span>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div id="radioProgressBar" class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden cursor-pointer">
+                <div id="radioProgressFill" class="h-full bg-[#4f46e5] w-0 transition-all duration-150"></div>
+              </div>
+              <div class="flex items-center justify-between text-[10px] font-semibold text-slate-400 tabular-nums">
+                <span id="radioTimeCurrent">0:00</span>
+                <span id="radioPlaylistIndex">Faixa 0 de 0</span>
+                <span id="radioTimeDuration">0:30</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 pt-0.5">
+              <div class="flex items-center gap-1.5">
+                <button id="radioPrevBtn" title="Faixa anterior" class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center cursor-pointer">⏮</button>
+                <button id="radioPlayPauseBtn" title="Tocar / Pausar Rádio" class="w-9 h-9 rounded-xl bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-extrabold flex items-center justify-center shadow-xs cursor-pointer">▶</button>
+                <button id="radioNextBtn" title="Próxima faixa" class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center cursor-pointer">⏭</button>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs text-slate-400">🔊</span>
+                <input id="radioVolume" type="range" min="0" max="1" step="0.05" value="0.75" aria-label="Volume da rádio" class="w-16 accent-[#4f46e5] cursor-pointer" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- TRILHAS DO MURAL (musicas anexadas) -->
         <div class="rounded-2xl bg-white p-3.5 border border-slate-200 shadow-sm">
           <p class="px-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">🎵 Trilhas do Mural</p>
