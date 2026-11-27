@@ -20,12 +20,15 @@ self.addEventListener("fetch", (e) => {
       url.hostname.includes("tailwindcss") || url.hostname.includes("fonts.")) {
     return;
   }
+  // Ignora esquemas nao suportados pelo Cache (chrome-extension, etc.)
+  if (!e.request.url.startsWith("http")) return;
+
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const fetchPromise = fetch(e.request).then((res) => {
         if (res && res.status === 200 && res.type === "basic") {
           const clone = res.clone();
-          caches.open(CACHE).then((c) => c.put(e.request, clone));
+          caches.open(CACHE).then((c) => c.put(e.request, clone).catch(() => {}));
         }
         return res;
       }).catch(() => cached);
