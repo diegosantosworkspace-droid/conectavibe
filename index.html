@@ -671,6 +671,9 @@
               🎬 Vídeo Curto (até 20s)
               <input type="file" id="postVideoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" />
             </label>
+            <button type="button" id="openVideoRecorderBtn" class="px-3.5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold cursor-pointer shadow-sm">
+              🎥 Gravar Vídeo (até 15s)
+            </button>
             <button type="button" id="clearPostMediaBtn" class="hidden text-xs font-bold text-rose-600 hover:underline cursor-pointer">Remover mídia</button>
           </div>
           <p id="mediaUploadStatus" class="text-[11px] text-slate-500">Enquadramento automático sem cortes (foto inteira preservada).</p>
@@ -842,6 +845,32 @@
       </button>
     </div>
   </nav>
+
+  <!-- MODAL GRAVADOR DE VÍDEO -->
+  <div id="videoRecorderModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-extrabold text-slate-900">🎥 Gravar Vídeo (até 15s)</h3>
+        <button id="closeVideoRecorderBtn" class="w-8 h-8 rounded-full bg-slate-100 text-xs font-bold">✕</button>
+      </div>
+      <video id="videoRecPreview" autoplay muted playsinline class="w-full rounded-2xl bg-black aspect-video object-cover mb-3"></video>
+      <div class="text-center mb-3">
+        <span id="videoRecStatus" class="text-2xl font-black text-slate-900">15</span>
+        <p id="videoRecHint" class="text-[11px] text-slate-500">Toque em gravar para iniciar.</p>
+      </div>
+      <div class="flex items-center justify-center gap-3 mb-4">
+        <button id="videoStartRecBtn" class="w-14 h-14 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xl flex items-center justify-center shadow-lg">●</button>
+        <button id="videoStopRecBtn" class="hidden w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-900 text-white text-xl flex items-center justify-center shadow-lg">■</button>
+      </div>
+      <div id="videoPreviewBox" class="hidden mb-4">
+        <video id="videoPreviewPlayer" controls class="w-full rounded-2xl bg-black aspect-video object-cover"></video>
+      </div>
+      <div class="flex gap-2">
+        <button id="videoCancelRecBtn" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Cancelar</button>
+        <button id="videoPublishRecBtn" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold hidden">Usar Vídeo</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="./js/app.js"></script>
   <script>

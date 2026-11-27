@@ -2184,5 +2184,137 @@ if (radioBar) {
   });
 }
 
+// ===== GRAVADOR DE VÍDEO (até 15s) =====
+let videoStream = null;
+let videoRecorder = null;
+let videoChunks = [];
+let videoTimerInterval = null;
+let videoSeconds = 15;
+let videoBlob = null;
+let videoMime = "";
+
+function supportedVideoMime() {
+  const types = ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+  for (const t of types) {
+    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return "";
+}
+
+async function openVideoRecorder() {
+  const modal = document.getElementById("videoRecorderModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
+    const preview = document.getElementById("videoRecPreview");
+    preview.srcObject = videoStream;
+  } catch (err) {
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      document.getElementById("videoRecPreview").srcObject = videoStream;
+    } catch (e) {
+      alert("Não foi possível acessar a câmera. Verifique as permissões.");
+      modal.classList.add("hidden");
+    }
+  }
+}
+
+document.getElementById("openVideoRecorderBtn")?.addEventListener("click", openVideoRecorder);
+
+document.getElementById("closeVideoRecorderBtn")?.addEventListener("click", () => {
+  stopVideoRecording();
+  document.getElementById("videoRecorderModal")?.classList.add("hidden");
+});
+
+document.getElementById("videoCancelRecBtn")?.addEventListener("click", () => {
+  stopVideoRecording();
+  document.getElementById("videoRecorderModal")?.classList.add("hidden");
+  document.getElementById("videoPreviewBox")?.classList.add("hidden");
+  document.getElementById("videoPublishRecBtn")?.classList.add("hidden");
+  document.getElementById("videoRecHint").textContent = "Toque em gravar para iniciar.";
+  document.getElementById("videoRecStatus").textContent = "15";
+});
+
+function stopVideoRecording() {
+  if (videoRecorder && videoRecorder.state !== "inactive") videoRecorder.stop();
+  clearInterval(videoTimerInterval);
+  if (videoStream) { videoStream.getTracks().forEach((t) => t.stop()); videoStream = null; }
+}
+
+document.getElementById("videoStartRecBtn")?.addEventListener("click", () => {
+  if (!videoStream) return;
+  videoMime = supportedVideoMime();
+  videoChunks = [];
+  videoRecorder = new MediaRecorder(videoStream, videoMime ? { mimeType: videoMime } : undefined);
+  videoRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) videoChunks.push(e.data); };
+  videoRecorder.onstop = () => {
+    videoBlob = new Blob(videoChunks, { type: videoMime || "video/webm" });
+    const url = URL.createObjectURL(videoBlob);
+    const player = document.getElementById("videoPreviewPlayer");
+    player.src = url;
+    document.getElementById("videoPreviewBox").classList.remove("hidden");
+    document.getElementById("videoPublishRecBtn").classList.remove("hidden");
+    document.getElementById("videoRecHint").textContent = "Assista o preview e use o vídeo ou grave de novo.";
+  };
+  videoSeconds = 15;
+  document.getElementById("videoRecStatus").textContent = videoSeconds;
+  document.getElementById("videoStartRecBtn").classList.add("hidden");
+  document.getElementById("videoStopRecBtn").classList.remove("hidden");
+  document.getElementById("videoRecHint").textContent = "Gravando...";
+  videoRecorder.start();
+  videoTimerInterval = setInterval(() => {
+    videoSeconds--;
+    document.getElementById("videoRecStatus").textContent = videoSeconds;
+    if (videoSeconds <= 0) document.getElementById("videoStopRecBtn")?.click();
+  }, 1000);
+});
+
+document.getElementById("videoStopRecBtn")?.addEventListener("click", () => {
+  if (videoRecorder && videoRecorder.state !== "inactive") videoRecorder.stop();
+  clearInterval(videoTimerInterval);
+  document.getElementById("videoStartRecBtn").classList.remove("hidden");
+  document.getElementById("videoStopRecBtn").classList.add("hidden");
+  document.getElementById("videoRecHint").textContent = "Processando...";
+});
+
+document.getElementById("videoPublishRecBtn")?.addEventListener("click", async () => {
+  if (!videoBlob) return;
+  // Limite de tamanho (Firestore doc ~1MB)
+  if (videoBlob.size > 700 * 1024) {
+    alert("Vídeo muito grande. Grave um vídeo mais curto (até ~10s).");
+    return;
+  }
+  const btn = document.getElementById("videoPublishRecBtn");
+  btn.disabled = true;
+  btn.textContent = "Processando...";
+  try {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      draftVideoBase64 = ev.target.result;
+      draftImageBase64 = null;
+      const box = document.getElementById("postMediaPreviewBox");
+      box.innerHTML = `<video src="${draftVideoBase64}" controls muted class="max-h-56 object-contain"></video>`;
+      box.classList.remove("hidden");
+      document.getElementById("clearPostMediaBtn").classList.remove("hidden");
+      document.getElementById("videoRecorderModal").classList.add("hidden");
+      document.getElementById("videoPreviewBox").classList.add("hidden");
+      btn.classList.add("hidden");
+      btn.disabled = false;
+      btn.textContent = "Usar Vídeo";
+      // reset camera
+      if (videoStream) { videoStream.getTracks().forEach((t) => t.stop()); videoStream = null; }
+      document.getElementById("videoRecHint").textContent = "Toque em gravar para iniciar.";
+      document.getElementById("videoRecStatus").textContent = "15";
+    };
+    reader.readAsDataURL(videoBlob);
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao processar vídeo.");
+    btn.disabled = false;
+    btn.textContent = "Usar Vídeo";
+  }
+});
+
 // Inicializar
 initGate();
