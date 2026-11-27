@@ -826,7 +826,7 @@ function openNewPostModal() {
 }
 
 document.getElementById("topNewPostBtn").addEventListener("click", openNewPostModal);
-document.getElementById("sidebarNewPostBtn").addEventListener("click", openNewPostModal);
+document.getElementById("sidebarNewPostBtn")?.addEventListener("click", openNewPostModal);
 document.getElementById("closeNewPostModalBtn").addEventListener("click", () => document.getElementById("newPostModal").classList.add("hidden"));
 document.getElementById("cancelNewPostBtn").addEventListener("click", () => document.getElementById("newPostModal").classList.add("hidden"));
 
@@ -1108,6 +1108,8 @@ document.getElementById("editVibeBtn").addEventListener("click", async () => {
 document.getElementById("navFeedBtn").addEventListener("click", () => {
   document.getElementById("feedSection").classList.remove("hidden");
   document.getElementById("adminSection").classList.add("hidden");
+  document.getElementById("leftSidebar")?.classList.remove("hidden");
+  document.getElementById("rightSidebar")?.classList.remove("hidden");
   document.getElementById("navFeedBtn").classList.add("bg-white", "text-[#4f46e5]", "shadow-sm");
   document.getElementById("navAdminBtn").classList.remove("bg-white", "text-[#4f46e5]", "shadow-sm");
 });
@@ -1115,6 +1117,8 @@ document.getElementById("navFeedBtn").addEventListener("click", () => {
 document.getElementById("navAdminBtn").addEventListener("click", () => {
   document.getElementById("feedSection").classList.add("hidden");
   document.getElementById("adminSection").classList.remove("hidden");
+  document.getElementById("leftSidebar")?.classList.add("hidden");
+  document.getElementById("rightSidebar")?.classList.add("hidden");
   document.getElementById("navAdminBtn").classList.add("bg-white", "text-[#4f46e5]", "shadow-sm");
   document.getElementById("navFeedBtn").classList.remove("bg-white", "text-[#4f46e5]", "shadow-sm");
 });

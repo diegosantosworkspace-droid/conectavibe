@@ -97,9 +97,13 @@
     @media (max-width: 640px) {
       .masonry-grid { column-count: 1 !important; }
       header { padding-left: 0.75rem; padding-right: 0.75rem; }
-      main, section { padding-left: 0.75rem; padding-right: 0.75rem; }
+      main, section { padding-left: 0.5rem; padding-right: 0.5rem; }
       .glass-card { padding: 1.25rem; }
       .gate-float { width: 56px; height: 56px; font-size: 24px; border-radius: 16px; }
+      /* Cards de post estilo rede social no mobile */
+      .masonry-item article { border-radius: 12px; }
+      .masonry-item .p-4 { padding: 0.75rem; }
+      .masonry-item img.rounded-\[10px\] { border-radius: 9999px; }
     }
     @media (max-width: 1023px) {
       aside { width: 100% !important; }
@@ -283,39 +287,39 @@
     </div>
 
     <!-- CORPO PRINCIPAL (SIDEBAR + CONTEÚDO EDGE-TO-EDGE) -->
-    <div class="w-full flex-1 flex flex-col lg:flex-row gap-5 px-4 lg:px-6 py-5">
+    <div class="w-full flex-1 flex flex-col lg:flex-row gap-5 px-4 lg:px-6 py-5 max-w-[1320px] mx-auto">
 
-      <!-- BARRA LATERAL ESQUERDA (desktop) -->
-      <aside class="hidden md:block w-full lg:w-72 shrink-0 space-y-4">
+      <!-- COLUNA ESQUERDA (desktop, sticky) -->
+      <aside id="leftSidebar" class="hidden lg:block w-[260px] shrink-0 sticky top-20 self-start space-y-4">
 
-        <!-- CARD DE PERFIL DO USUÁRIO -->
+        <!-- CARD DE PERFIL DO USUÁRIO (compacto) -->
         <div class="rounded-2xl bg-white p-4 border border-slate-200 shadow-sm">
           <div class="flex items-center gap-3">
             <div class="relative shrink-0">
               <div
                 id="sidebarAvatarRing"
-                class="w-14 h-14 rounded-2xl p-0.5 overflow-hidden shadow-sm"
+                class="w-12 h-12 rounded-xl p-0.5 overflow-hidden shadow-sm"
                 style="background-color: #4f46e5;"
               >
                 <img
                   id="sidebarAvatarImg"
                   src=""
                   alt="Avatar"
-                  class="w-full h-full object-cover rounded-[14px] bg-slate-100"
+                  class="w-full h-full object-cover rounded-[10px] bg-slate-100"
                 />
               </div>
               <span
                 id="sidebarAvatarEmoji"
-                class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white shadow border border-slate-200 flex items-center justify-center text-xs"
+                class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white shadow border border-slate-200 flex items-center justify-center text-[10px]"
               >🚀</span>
-              <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+              <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"></span>
             </div>
             <div class="min-w-0 flex-1">
               <h2 id="sidebarUserName" class="font-extrabold text-sm text-slate-900 truncate">Carregando...</h2>
               <p id="sidebarUserSub" class="text-xs text-slate-500 truncate">Operações • CD SP</p>
               <button
                 id="openProfileModalBtn"
-                class="mt-1 text-[11px] font-bold text-[#4f46e5] hover:underline cursor-pointer"
+                class="mt-0.5 text-[11px] font-bold text-[#4f46e5] hover:underline cursor-pointer"
               >
                 🎨 Foto, Capa & Cor
               </button>
@@ -332,62 +336,6 @@
             </p>
           </div>
 
-          <button
-            id="sidebarNewPostBtn"
-            class="mt-3.5 w-full py-2.5 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white text-xs font-extrabold shadow-sm transition cursor-pointer"
-          >
-            + Nova Publicação
-          </button>
-        </div>
-
-        <!-- WIDGET COMPACTO: SAUDAÇÃO + RELÓGIO + UF LOCAL + CLIMA REAL -->
-        <div class="rounded-2xl bg-[#0a1026] text-white p-4 shadow-sm border border-slate-800">
-          <div class="flex items-center justify-between gap-2 mb-1">
-            <span id="greetingText" class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-300">BOA NOITE!</span>
-            <div class="flex items-center gap-1.5">
-              <span id="localUfBadge" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 text-[11px] font-extrabold">SP</span>
-              <span id="localWeatherBadge" class="px-2 py-0.5 rounded-md bg-indigo-950/90 border border-indigo-800/60 text-indigo-200 text-[11px] font-bold">⛅ --°C</span>
-            </div>
-          </div>
-          <div id="liveClockText" class="text-2xl font-black tracking-tight tabular-nums">00:00:00</div>
-          <p id="liveDateText" class="text-[11px] text-slate-400 mt-0.5 capitalize">Carregando data...</p>
-          <div class="mt-2.5 pt-2.5 border-t border-slate-800/80 flex items-center gap-2 text-[11px] text-amber-300">
-            <span>📅</span>
-            <span id="ephemerisText" class="truncate font-medium">Operação Conectada • Brasil</span>
-          </div>
-        </div>
-
-        <!-- RÁDIO CONECTAVIBE (PLAYLIST CONTÍNUA) -->
-        <div class="rounded-2xl bg-white p-4 border border-slate-200 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">🎵 Rádio ConectaVibe</span>
-            <button
-              id="radioContinuousBtn"
-              class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 cursor-pointer"
-            >
-              🔁 Contínua: ON
-            </button>
-          </div>
-          <div class="flex items-center gap-2.5">
-            <button
-              id="radioPlayPauseBtn"
-              class="w-9 h-9 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
-            >
-              ▶
-            </button>
-            <div class="min-w-0 flex-1">
-              <p id="radioTrackTitle" class="text-xs font-extrabold text-slate-900 truncate">Selecione ou dê Play</p>
-              <p id="radioTrackArtist" class="text-[11px] text-slate-500 truncate">Playlist da Equipe</p>
-            </div>
-            <button id="radioNextBtn" class="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer">⏭</button>
-          </div>
-          <div class="mt-2.5 flex items-center gap-2">
-            <span id="radioCurrentTime" class="text-[10px] font-mono text-slate-400">0:00</span>
-            <div id="radioProgressBar" class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden cursor-pointer">
-              <div id="radioProgressFill" class="h-full bg-[#4f46e5] w-0 transition-all"></div>
-            </div>
-            <span id="radioDurationTime" class="text-[10px] font-mono text-slate-400">0:30</span>
-          </div>
         </div>
 
         <!-- CATEGORIAS DO MURAL -->
@@ -399,7 +347,7 @@
       </aside>
 
       <!-- ÁREA CENTRAL: MURAL PRINCIPAL -->
-      <main id="feedSection" class="flex-1 min-w-0">
+      <main id="feedSection" class="flex-1 min-w-0 w-full lg:max-w-[680px]">
         <!-- Banner compacto mobile (avatar + clima + vibe) -->
         <div id="mobileCompactBanner" class="md:hidden mb-3 rounded-2xl bg-white border border-slate-200 shadow-sm p-3">
           <div class="flex items-center gap-3">
@@ -449,6 +397,61 @@
           <p class="text-xs text-slate-500 mt-1">Clique em "+ Nova Publicação" para inaugurar o mural.</p>
         </div>
       </main>
+
+      <!-- COLUNA DIREITA (desktop, sticky) -->
+      <aside id="rightSidebar" class="hidden lg:block w-[300px] shrink-0 sticky top-20 self-start space-y-4">
+
+        <!-- WIDGET: SAUDAÇÃO + RELÓGIO + UF/CLIMA + DATA -->
+        <div class="rounded-2xl bg-[#0f172a] text-white p-4 shadow-sm border border-slate-800">
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <span id="greetingText" class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-300">BOA NOITE!</span>
+            <div class="flex items-center gap-1.5">
+              <span id="localUfBadge" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 text-[11px] font-extrabold">SP</span>
+              <span id="localWeatherBadge" class="px-2 py-0.5 rounded-md bg-indigo-950/90 border border-indigo-800/60 text-indigo-200 text-[11px] font-bold">⛅ --°C</span>
+            </div>
+          </div>
+          <div id="liveClockText" class="text-2xl font-black tracking-tight tabular-nums">00:00:00</div>
+          <p id="liveDateText" class="text-[11px] text-slate-400 mt-0.5 capitalize">Carregando data...</p>
+          <div class="mt-2.5 pt-2.5 border-t border-slate-800/80 flex items-center gap-2 text-[11px] text-amber-300">
+            <span>📅</span>
+            <span id="ephemerisText" class="truncate font-medium">Operação Conectada • Brasil</span>
+          </div>
+        </div>
+
+        <!-- RÁDIO CONECTAVIBE -->
+        <div class="rounded-2xl bg-white p-4 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">🎵 Rádio ConectaVibe</span>
+            <button
+              id="radioContinuousBtn"
+              class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 cursor-pointer"
+            >
+              🔁 Contínua: ON
+            </button>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <button
+              id="radioPlayPauseBtn"
+              class="w-9 h-9 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
+            >
+              ▶
+            </button>
+            <div class="min-w-0 flex-1">
+              <p id="radioTrackTitle" class="text-xs font-extrabold text-slate-900 truncate">Selecione ou dê Play</p>
+              <p id="radioTrackArtist" class="text-[11px] text-slate-500 truncate">Playlist da Equipe</p>
+            </div>
+            <button id="radioNextBtn" class="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer">⏭</button>
+          </div>
+          <div class="mt-2.5 flex items-center gap-2">
+            <span id="radioCurrentTime" class="text-[10px] font-mono text-slate-400">0:00</span>
+            <div id="radioProgressBar" class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden cursor-pointer">
+              <div id="radioProgressFill" class="h-full bg-[#4f46e5] w-0 transition-all"></div>
+            </div>
+            <span id="radioDurationTime" class="text-[10px] font-mono text-slate-400">0:30</span>
+          </div>
+        </div>
+
+      </aside>
 
       <!-- ÁREA CENTRAL ALTERNATIVA: PAINEL ADMIN -->
       <section id="adminSection" class="hidden flex-1 min-w-0 space-y-5">
