@@ -562,6 +562,44 @@ function renderFeed() {
   container.className = "";
   container.innerHTML = html;
   bindPostCardEvents();
+  renderTracks();
+}
+
+function renderTracks() {
+  const box = document.getElementById("tracksList");
+  const empty = document.getElementById("tracksEmpty");
+  if (!box) return;
+  const tracks = getVisiblePosts()
+    .filter((p) => p.musicTrack && p.musicTrack.previewUrl)
+    .slice(0, 15);
+  if (tracks.length === 0) {
+    box.innerHTML = "";
+    if (empty) empty.classList.remove("hidden");
+    return;
+  }
+  if (empty) empty.classList.add("hidden");
+  box.innerHTML = tracks.map((p) => `
+    <button type="button" class="track-play-btn w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 text-left" data-preview="${p.musicTrack.previewUrl}">
+      ${p.musicTrack.artworkUrl ? `<img src="${escapeHtml(p.musicTrack.artworkUrl)}" class="w-7 h-7 rounded object-cover shrink-0" />` : `<span class="w-7 h-7 rounded bg-indigo-100 flex items-center justify-center text-xs shrink-0">🎵</span>`}
+      <div class="min-w-0 flex-1">
+        <p class="text-[11px] font-bold text-slate-900 truncate">${escapeHtml(p.musicTrack.title)}</p>
+        <p class="text-[9px] text-slate-500 truncate">${escapeHtml(p.musicTrack.artist)}</p>
+      </div>
+      <span class="text-xs text-[#4f46e5] font-bold">▶</span>
+    </button>
+  `).join("");
+  box.querySelectorAll(".track-play-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (audioPlayer.src === btn.dataset.preview && !audioPlayer.paused) {
+        audioPlayer.pause();
+      } else {
+        audioPlayer.src = btn.dataset.preview;
+        audioPlayer.play().catch(() => {});
+      }
+      syncPlayButtons();
+    });
+  });
+  syncPlayButtons();
 }
 
 function buildPostCardHTML(post) {
@@ -592,7 +630,8 @@ function buildPostCardHTML(post) {
       </div>`;
 
   const musicHTML = post.musicTrack
-    ? `<div class="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
+    ? `<div class="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
+        ${post.musicTrack.artworkUrl ? `<img src="${escapeHtml(post.musicTrack.artworkUrl)}" alt="" class="w-10 h-10 rounded-lg object-cover shrink-0" />` : ""}
         <button type="button" class="play-post-music w-8 h-8 rounded-lg bg-[#4f46e5] text-white text-xs font-bold flex items-center justify-center shrink-0 cursor-pointer" data-preview="${post.musicTrack.previewUrl}" data-title="${post.musicTrack.title}" data-artist="${post.musicTrack.artist}">▶</button>
         <div class="min-w-0 flex-1">
           <p class="text-xs font-extrabold text-slate-900 truncate">${escapeHtml(post.musicTrack.title)}</p>
@@ -830,15 +869,29 @@ function bindPostCardEvents() {
         return;
       }
       activeMusicBtn = btn;
-      document.querySelectorAll(".play-post-music").forEach((b) => { b.textContent = "▶"; });
       audioPlayer.src = btn.dataset.preview;
       audioPlayer.play().catch(() => {});
-      document.getElementById("radioTrackTitle").textContent = btn.dataset.title;
-      document.getElementById("radioTrackArtist").textContent = btn.dataset.artist;
-      document.getElementById("radioPlayPauseBtn").textContent = "❚❚";
       btn.textContent = "❚❚";
     });
     musicObserver.observe(btn);
+  });
+
+  // Sincroniza todos os botoes de play (posts + trilhas)
+  function syncPlayButtons() {
+    const cur = audioPlayer.src;
+    const playing = !audioPlayer.paused && !!cur;
+    document.querySelectorAll(".play-post-music, .track-play-btn").forEach((btn) => {
+      const isTrack = btn.classList.contains("track-play-btn");
+      const span = isTrack ? btn.querySelector("span:last-child") : btn;
+      const match = !!cur && !!btn.dataset.preview && cur === btn.dataset.preview;
+      if (span) span.textContent = (match && playing) ? "❚❚" : "▶";
+    });
+  }
+  audioPlayer.addEventListener("play", syncPlayButtons);
+  audioPlayer.addEventListener("pause", syncPlayButtons);
+  audioPlayer.addEventListener("ended", () => {
+    if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; activeMusicBtn = null; }
+    syncPlayButtons();
   });
 
   document.querySelectorAll(".delete-post-btn").forEach((btn) => {
@@ -974,7 +1027,8 @@ document.getElementById("musicSearchBtn").addEventListener("click", () => {
           <button type="button" class="select-track-btn w-full px-3 py-2 text-left hover:bg-indigo-50 flex items-center justify-between gap-2 cursor-pointer"
             data-title="${t.trackName.replace(/"/g, "&quot;")}"
             data-artist="${t.artistName.replace(/"/g, "&quot;")}"
-            data-preview="${t.previewUrl}">
+            data-preview="${t.previewUrl}"
+            data-artwork="${(t.artworkUrl100 || '').replace(/"/g, "&quot;")}">
             <div class="min-w-0">
               <p class="text-xs font-bold text-slate-900 truncate">${t.trackName}</p>
               <p class="text-[10px] text-slate-500 truncate">${t.artistName}</p>
@@ -987,7 +1041,7 @@ document.getElementById("musicSearchBtn").addEventListener("click", () => {
     resultsBox.classList.remove("hidden");
     resultsBox.querySelectorAll(".select-track-btn").forEach((b) => {
       b.addEventListener("click", () => {
-        draftMusicTrack = { title: b.dataset.title, artist: b.dataset.artist, previewUrl: b.dataset.preview };
+        draftMusicTrack = { title: b.dataset.title, artist: b.dataset.artist, previewUrl: b.dataset.preview, artworkUrl: b.dataset.artwork };
         document.getElementById("selectedMusicLabel").textContent = `🎵 ${draftMusicTrack.title} — ${draftMusicTrack.artist}`;
         document.getElementById("selectedMusicChip").classList.remove("hidden");
         document.getElementById("selectedMusicChip").classList.add("flex");
