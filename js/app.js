@@ -162,7 +162,14 @@ function compressImageFile(file, maxWidth = 960, quality = 0.78) {
 // ============================================================================
 // PORTARIA EXCLUSIVA POR CELULAR (FIREBASE AUTH + WHITELIST)
 // ============================================================================
+async function ensureAuth() {
+  if (auth.currentUser) return auth.currentUser;
+  const cred = await signInAnonymously(auth);
+  return cred.user;
+}
+
 async function initGate() {
+  await ensureAuth();
   const savedPhone = localStorage.getItem("cv_logged_phone");
   const snap = await getDocs(collection(db, "whitelist"));
   whitelistEntries = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -212,6 +219,7 @@ document.getElementById("gateForm").addEventListener("submit", async (e) => {
   btn.textContent = "Verificando Portaria...";
 
   try {
+    await ensureAuth();
     const snap = await getDocs(collection(db, "whitelist"));
     whitelistEntries = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
@@ -269,8 +277,8 @@ async function completeLogin(whitelistProfile) {
     uid: authUser.uid,
     phone: whitelistProfile.id,
     name: whitelistProfile.name || "Colaborador",
-    role: whitelistProfile.role || "team",
-    company: whitelistProfile.company || (whitelistProfile.role === "supplier" ? "Transportador Parceiro" : "iMile Delivery"),
+    role: whitelistProfile.role || "equipe",
+    company: whitelistProfile.company || (whitelistProfile.role === "fornecedor" ? "Transportador Parceiro" : "iMile Delivery"),
     base: whitelistProfile.base || "CD SP • São Paulo - SP",
     avatarUrl: whitelistProfile.avatarUrl || DEFAULT_AVATAR,
     coverUrl: whitelistProfile.coverUrl || DEFAULT_COVER,
@@ -322,7 +330,7 @@ function applyRoleUI() {
       <option value="Negócios">📈 Negócios</option>
       <option value="Diversão">🎉 Diversão</option>
     `;
-  } else if (currentUser.role === "supplier") {
+  } else if (currentUser.role === "fornecedor") {
     badgeTop.textContent = "🚚 Fornecedor";
     navAdmin.classList.add("hidden");
     highlightBox.classList.add("hidden");
@@ -346,7 +354,7 @@ function applyRoleUI() {
 
 function renderCategories() {
   const container = document.getElementById("categoryList");
-  const allowed = currentUser.role === "supplier" ? SUPPLIER_ALLOWED_CATS : ALL_CATEGORIES.map((c) => c.id);
+  const allowed = currentUser.role === "fornecedor" ? SUPPLIER_ALLOWED_CATS : ALL_CATEGORIES.map((c) => c.id);
 
   container.innerHTML = ALL_CATEGORIES
     .filter((c) => allowed.includes(c.id))
@@ -407,14 +415,14 @@ function startRealtimeListeners() {
 
 function getVisiblePosts() {
   return allPosts.filter((p) => {
-    if (p.status !== "approved") return false;
-    if (currentUser.role === "supplier" && p.category === "Trabalho") return false;
+    if (p.status !== "aprovado") return false;
+    if (currentUser.role === "fornecedor" && p.category === "Trabalho") return false;
     return true;
   });
 }
 
 function updatePendingCounter() {
-  const pending = allPosts.filter((p) => p.status === "pending");
+  const pending = allPosts.filter((p) => p.status === "pendente");
   const badge = document.getElementById("pendingCountBadge");
   if (pending.length > 0) {
     badge.textContent = pending.length;
@@ -566,8 +574,8 @@ function buildPostCardHTML(post) {
               <div class="flex items-center gap-1.5">
                 <span class="text-xs font-extrabold text-slate-900 truncate">${escapeHtml(post.authorName)}</span>
                 <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                  post.authorRole === "supplier" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-[#4f46e5]"
-                }">${post.authorRole === "supplier" ? "🚚 Parceiro" : "🏢 iMile"}</span>
+                  post.authorRole === "fornecedor" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-[#4f46e5]"
+                }">${post.authorRole === "fornecedor" ? "🚚 Parceiro" : "🏢 iMile"}</span>
               </div>
               <p class="text-[11px] text-slate-500 truncate">${escapeHtml(post.authorBase || "CD SP")} • ${escapeHtml(post.timeLabel || "Agora")}</p>
             </div>
@@ -731,7 +739,7 @@ function bindPostCardEvents() {
       const postFallback = allPosts.find((p) => p.authorPhone === phone);
       const data = wl || {
         name: postFallback?.authorName || "Colaborador",
-        role: postFallback?.authorRole || "team",
+        role: postFallback?.authorRole || "equipe",
         base: postFallback?.authorBase || "CD SP",
         avatarUrl: postFallback?.authorAvatar || DEFAULT_AVATAR,
         coverUrl: DEFAULT_COVER,
@@ -746,7 +754,7 @@ function bindPostCardEvents() {
       document.getElementById("authorCardEmoji").textContent = data.avatarEmoji || "🚀";
       document.getElementById("authorCardName").textContent = data.name;
       document.getElementById("authorCardTypeBadge").textContent =
-        data.role === "supplier" ? "🚚 Transportador / Parceiro" : "🏢 iMile Delivery";
+        data.role === "fornecedor" ? "🚚 Transportador / Parceiro" : "🏢 iMile Delivery";
       document.getElementById("authorCardBase").textContent = data.base;
       document.getElementById("authorCardVibe").textContent = `"${data.vibe || "Operação 100% conectada!"}"`;
 
@@ -949,11 +957,12 @@ document.getElementById("removeSelectedMusicBtn").addEventListener("click", () =
 
 document.getElementById("newPostForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const isSupplier = currentUser.role === "supplier";
+  const isSupplier = currentUser.role === "fornecedor";
   const isFeatured = !isSupplier && document.getElementById("postIsFeaturedInput").checked;
   const nowStr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   const newDoc = {
+    authorUid: currentUser.uid,
     authorPhone: currentUser.phone,
     authorName: currentUser.name,
     authorRole: currentUser.role,
@@ -969,7 +978,7 @@ document.getElementById("newPostForm").addEventListener("submit", async (e) => {
     imageUrl: draftImageBase64 || null,
     videoUrl: draftVideoBase64 || null,
     musicTrack: draftMusicTrack || null,
-    status: isSupplier ? "pending" : "approved",
+    status: isSupplier ? "pendente" : "aprovado",
     views: 1,
     reactions: { "🔥": 0, "👏": 0, "🚀": 0, "❤️": 0 },
     cientes: [],
@@ -1091,7 +1100,7 @@ document.getElementById("navAdminBtn").addEventListener("click", () => {
 
 function renderSupplierQueue() {
   const box = document.getElementById("supplierQueueContainer");
-  const pending = allPosts.filter((p) => p.status === "pending");
+  const pending = allPosts.filter((p) => p.status === "pendente");
   if (pending.length === 0) {
     box.innerHTML = `<p class="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl">Nenhum post de fornecedor aguardando aprovação no momento.</p>`;
     return;
@@ -1114,7 +1123,7 @@ function renderSupplierQueue() {
     .join("");
 
   box.querySelectorAll(".approve-post-btn").forEach((b) =>
-    b.addEventListener("click", () => updateDoc(doc(db, "posts", b.dataset.id), { status: "approved" }))
+    b.addEventListener("click", () => updateDoc(doc(db, "posts", b.dataset.id), { status: "aprovado" }))
   );
   box.querySelectorAll(".reject-post-btn").forEach((b) =>
     b.addEventListener("click", () => deleteDoc(doc(db, "posts", b.dataset.id)))
@@ -1144,7 +1153,7 @@ document.getElementById("inviteForm").addEventListener("submit", async (e) => {
     avatarUrl: DEFAULT_AVATAR,
     coverUrl: DEFAULT_COVER,
     ringColor: "#4f46e5",
-    avatarEmoji: role === "admin" ? "👑" : role === "supplier" ? "🚚" : "🚀",
+    avatarEmoji: role === "admin" ? "👑" : role === "fornecedor" ? "🚚" : "🚀",
     vibe: "Conectado no ConectaVibe!"
   });
 
@@ -1165,10 +1174,10 @@ function renderWhitelistTable() {
           <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
             w.role === "admin"
               ? "bg-indigo-100 text-[#4f46e5]"
-              : w.role === "supplier"
+              : w.role === "fornecedor"
               ? "bg-emerald-100 text-emerald-700"
               : "bg-slate-100 text-slate-700"
-          }">${w.role === "admin" ? "👑 Admin" : w.role === "supplier" ? "🚚 Fornecedor" : "👷 Equipe"}</span>
+          }">${w.role === "admin" ? "👑 Admin" : w.role === "fornecedor" ? "🚚 Fornecedor" : "👷 Equipe"}</span>
         </td>
         <td class="py-2.5 px-3 text-slate-500">${escapeHtml(w.base || "-")}</td>
         <td class="py-2.5 px-3 font-mono font-bold text-slate-700">${escapeHtml(w.token || "-")}</td>

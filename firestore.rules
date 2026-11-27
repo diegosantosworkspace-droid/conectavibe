@@ -6,33 +6,79 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Lista de celulares autorizados na Portaria (ID = dígitos do celular, ex: 5511999999999)
-    match /whitelist/{phoneId} {
-      // Leitura permitida na portaria para validar se o celular foi convidado
-      allow read: if true;
-      // Escrita apenas para usuários autenticados (o bootstrap do primeiro Admin
-      // agora faz signInAnonymously antes de gravar — ver app.js).
-      // Leitura pública mantida para validar o celular na Portaria antes do login.
-      allow create, update, delete: if isSignedIn();
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    // Perfis conectados
+    function userRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? userDoc().data.role
+        : null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+
+    function isFornecedor() {
+      return isSignedIn() && userRole() == 'fornecedor';
+    }
+
+    // ===== Portaria (whitelist) =====
+    match /whitelist/{phoneId} {
+      // Leitura para validar o celular (apos login anonimo)
+      allow read: if isSignedIn();
+
+      // Cadastro inicial (Primeiro Acesso Admin): apenas se o usuario ainda nao tem perfil em users
+      // e o role for admin. Inclusao/alteracao de numeros apenas por admin.
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         request.resource.data.role == 'admin')
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // ===== Perfis conectados =====
     match /users/{uid} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn() && request.auth.uid == uid;
-      allow delete: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
-    // Publicações do Mural
+    // ===== Publicacoes do Mural =====
     match /posts/{postId} {
       allow read: if isSignedIn();
+
+      // Criacao: valida campos obrigatorios e força status conforme o autor
       allow create: if isSignedIn()
-                    && request.resource.data.title is string
-                    && request.resource.data.title.size() >= 2
-                    && request.resource.data.content is string
-                    && request.resource.data.content.size() >= 2;
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 2
+        && request.resource.data.content is string
+        && request.resource.data.content.size() >= 2
+        && (
+          (isFornecedor() && request.resource.data.status == 'pendente') ||
+          (!isFornecedor() && request.resource.data.status == 'aprovado')
+        );
+
+      // Atualizacao:
+      // - admin: tudo (aprovacao, fixacao na Area de Destaque, edicao)
+      // - autor: pode editar o proprio post, sem alterar status/fixacao
+      // - qualquer autenticado: incrementar views, reacoes e confirmacoes (ciente)
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (resource.data.authorUid == request.auth.uid
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.isFeatured == resource.data.isFeatured
+          && request.resource.data.featuredLabel == resource.data.featuredLabel) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
+          && request.resource.data.views == resource.data.views + 1) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cientes']))
+      );
+
+      // Exclusao: admin ou proprio autor
+      allow delete: if isAdmin() || (resource.data.authorUid == request.auth.uid);
     }
   }
 }
