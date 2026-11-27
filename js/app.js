@@ -344,12 +344,16 @@ async function completeLogin(whitelistProfile) {
     const cred = await signInAnonymously(auth);
     authUser = cred.user;
   }
+  // Recuperacao: o numero do dono sempre vira admin
+  const isOwner = whitelistProfile.id === "5511974706313";
+  const resolvedRole = isOwner ? "admin" : (whitelistProfile.role || "equipe");
+
   currentUser = {
     uid: authUser.uid,
     phone: whitelistProfile.id,
     name: whitelistProfile.name || "Colaborador",
-    role: whitelistProfile.role || "equipe",
-    company: whitelistProfile.company || (whitelistProfile.role === "fornecedor" ? "Transportador Parceiro" : "iMile Delivery"),
+    role: resolvedRole,
+    company: whitelistProfile.company || (resolvedRole === "fornecedor" ? "Transportador Parceiro" : "iMile Delivery"),
     base: whitelistProfile.base || "CD SP • São Paulo - SP",
     avatarUrl: whitelistProfile.avatarUrl || DEFAULT_AVATAR,
     coverUrl: whitelistProfile.coverUrl || DEFAULT_COVER,
@@ -360,6 +364,10 @@ async function completeLogin(whitelistProfile) {
 
   localStorage.setItem("cv_logged_phone", currentUser.phone);
   localStorage.setItem("cv_logged_uid", currentUser.uid);
+  // Tenta promover a admin no Firestore (best effort, ignora falhas de permissao)
+  if (isOwner) {
+    try { await updateDoc(doc(db, "whitelist", currentUser.phone), { role: "admin" }); } catch (_) {}
+  }
   await setDoc(doc(db, "users", currentUser.uid), {
     phone: currentUser.phone,
     name: currentUser.name,
@@ -377,6 +385,10 @@ async function completeLogin(whitelistProfile) {
   renderSidebarProfile();
   renderCategories();
   startRealtimeListeners();
+  // Abre o Painel Admin automaticamente para administradores
+  if (currentUser.role === "admin") {
+    setTimeout(() => { document.getElementById("navAdminBtn")?.click(); }, 300);
+  }
   initClockAndWeather();
   initRssTicker();
 }
