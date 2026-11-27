@@ -9,10 +9,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
+    html, body {
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
+    }
     body {
       font-family: 'Inter', sans-serif;
       background-color: #f4f6fb;
       color: #0f172a;
+      touch-action: pan-y;
     }
     .masonry-grid {
       column-count: 1;
@@ -79,6 +84,18 @@
       -webkit-background-clip: text; background-clip: text; color: transparent; }
     .gate-logo { background: linear-gradient(135deg, #6366f1, #06b6d4); box-shadow: 0 12px 40px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }
     .gate-badge { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35); color: #6ee7b7; }
+
+    /* ===== Melhorias mobile ===== */
+    @media (max-width: 640px) {
+      .masonry-grid { column-count: 1 !important; }
+      header { padding-left: 0.75rem; padding-right: 0.75rem; }
+      main, section { padding-left: 0.75rem; padding-right: 0.75rem; }
+      .glass-card { padding: 1.25rem; }
+      .gate-float { width: 56px; height: 56px; font-size: 24px; border-radius: 16px; }
+    }
+    @media (max-width: 1023px) {
+      aside { width: 100% !important; }
+    }
 
     /* ===== Separadores de data no feed ===== */
     .feed-date-header { font-size: 13px; font-weight: 800; color: #475569; margin: 4px 0 10px; padding-left: 4px;

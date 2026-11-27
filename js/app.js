@@ -78,6 +78,16 @@ let draftMusicTrack = null;
 // Rádio Contínua
 const audioPlayer = new Audio();
 let radioQueue = [];
+let activeMusicBtn = null;
+
+// Observer para parar a música quando o post sai da tela
+const musicObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (!entry.isIntersecting && entry.target === activeMusicBtn && !audioPlayer.paused) {
+      audioPlayer.pause();
+    }
+  });
+}, { threshold: 0.05 });
 let radioIndex = 0;
 let radioContinuous = true;
 
@@ -751,14 +761,26 @@ function bindPostCardEvents() {
     });
   });
 
+  // Re-observa os botões de música do feed (parar ao sair da tela)
+  musicObserver.disconnect();
   document.querySelectorAll(".play-post-music").forEach((btn) => {
+    btn.textContent = "▶";
     btn.addEventListener("click", () => {
-      playTrack({
-        previewUrl: btn.dataset.preview,
-        title: btn.dataset.title,
-        artist: btn.dataset.artist
-      });
+      const same = activeMusicBtn === btn;
+      if (same && !audioPlayer.paused) {
+        audioPlayer.pause();
+        return;
+      }
+      activeMusicBtn = btn;
+      document.querySelectorAll(".play-post-music").forEach((b) => { b.textContent = "▶"; });
+      audioPlayer.src = btn.dataset.preview;
+      audioPlayer.play().catch(() => {});
+      document.getElementById("radioTrackTitle").textContent = btn.dataset.title;
+      document.getElementById("radioTrackArtist").textContent = btn.dataset.artist;
+      document.getElementById("radioPlayPauseBtn").textContent = "❚❚";
+      btn.textContent = "❚❚";
     });
+    musicObserver.observe(btn);
   });
 
   document.querySelectorAll(".delete-post-btn").forEach((btn) => {
@@ -1191,6 +1213,8 @@ function rebuildRadioQueue() {
 
 function playTrack(track) {
   if (!track || !track.previewUrl) return;
+  activeMusicBtn = null;
+  document.querySelectorAll(".play-post-music").forEach((b) => { b.textContent = "▶"; });
   audioPlayer.src = track.previewUrl;
   audioPlayer.play().catch(() => {});
   document.getElementById("radioTrackTitle").textContent = track.title;
@@ -1224,12 +1248,26 @@ document.getElementById("radioContinuousBtn").addEventListener("click", (e) => {
 });
 
 audioPlayer.addEventListener("ended", () => {
+  if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; activeMusicBtn = null; }
   if (radioContinuous && radioQueue.length > 0) {
     radioIndex = (radioIndex + 1) % radioQueue.length;
     playTrack(radioQueue[radioIndex]);
   } else {
     document.getElementById("radioPlayPauseBtn").textContent = "▶";
   }
+});
+
+audioPlayer.addEventListener("pause", () => {
+  if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; }
+  document.getElementById("radioPlayPauseBtn").textContent = "▶";
+});
+
+audioPlayer.addEventListener("play", () => {
+  if (activeMusicBtn) {
+    document.querySelectorAll(".play-post-music").forEach((b) => { if (b !== activeMusicBtn) b.textContent = "▶"; });
+    activeMusicBtn.textContent = "❚❚";
+  }
+  document.getElementById("radioPlayPauseBtn").textContent = "❚❚";
 });
 
 audioPlayer.addEventListener("timeupdate", () => {
