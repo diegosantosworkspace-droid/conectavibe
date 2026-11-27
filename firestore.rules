@@ -88,10 +88,11 @@ service cloud.firestore {
         && request.resource.data.autorUid == request.auth.uid
         && request.resource.data.autorNome is string
         && request.resource.data.audioUrl is string;
-      // Reacoes: qualquer autenticado pode incrementar
+      // Reacoes: qualquer autenticado pode incrementar; ouvido pode ser marcado (destinatario)
       allow update: if isSignedIn() && (
         isAdmin() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reacoes'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reacoes']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ouvido'])
       );
       // Exclusao: admin ou proprio autor
       allow delete: if isAdmin() || (resource.data.autorUid == request.auth.uid);

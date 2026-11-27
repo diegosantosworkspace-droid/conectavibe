@@ -85,6 +85,34 @@ const audioPlayer = new Audio();
 let radioQueue = [];
 let activeMusicBtn = null;
 
+// Bip de radio comunicador (Web Audio API)
+function playBip() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+    // segundo bip
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "square";
+    osc2.frequency.value = 660;
+    gain2.gain.setValueAtTime(0.12, ctx.currentTime + 0.18);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.32);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.18);
+    osc2.stop(ctx.currentTime + 0.32);
+  } catch (_) {}
+}
+
 // Observer para parar a música quando o post sai da tela
 const musicObserver = new IntersectionObserver((entries) => {
   entries.forEach((entry) => {
@@ -1254,11 +1282,59 @@ let voiceAudio = new Audio();
 let voiceQueue = [];
 let voiceIndex = 0;
 let voiceActiveId = null;
+let cambioMessage = null;
 
 function recentVoiceMessages() {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
   return voiceMessages.filter((m) => (m.createdAtMs || 0) >= cutoff);
 }
+
+function checkCambioBanner() {
+  const banner = document.getElementById("cambioBanner");
+  if (!banner) return;
+  if (!currentUser) { banner.classList.add("hidden"); return; }
+  const unread = voiceMessages.find((m) =>
+    m.destinatarioTelefone && m.destinatarioTelefone === currentUser.phone &&
+    !m.ouvido && m.autorUid !== currentUser.uid
+  );
+  cambioMessage = unread || null;
+  if (!unread) { banner.classList.add("hidden"); return; }
+  const text = document.getElementById("cambioText");
+  if (text) text.textContent = `${unread.autorNome || 'Alguém'} te chamou • ${unread.tag || ''}`;
+  banner.classList.remove("hidden");
+}
+
+// Wire cambio banner
+document.getElementById("cambioPlayBtn")?.addEventListener("click", () => {
+  if (!cambioMessage) return;
+  const m = cambioMessage;
+  playVoiceOne(m);
+  // abrir gravador respondendo para o remetente
+  setTimeout(() => {
+    populateVoiceDest();
+    const sel = document.getElementById("voiceDestSelect");
+    const senderPhone = m.autorTelefone || null;
+    if (sel && senderPhone) {
+      sel.value = senderPhone;
+    }
+    document.getElementById("voiceRecorderModal")?.classList.remove("hidden");
+  }, 300);
+  document.getElementById("cambioBanner")?.classList.add("hidden");
+});
+
+document.getElementById("cambioWaBtn")?.addEventListener("click", () => {
+  if (!cambioMessage) return;
+  const m = cambioMessage;
+  const phone = m.autorPhone || "";
+  const msg = `📻 Câmbio! Oi ${m.autorNome || ''}, vi seu recado. Vou te responder pelo ConectaVibe!`;
+  if (phone) window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+  else window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  document.getElementById("cambioBanner")?.classList.add("hidden");
+});
+
+document.getElementById("cambioCloseBtn")?.addEventListener("click", () => {
+  document.getElementById("cambioBanner")?.classList.add("hidden");
+});
 
 function renderVoiceUI() {
   const list = recentVoiceMessages();
@@ -1282,6 +1358,8 @@ function renderVoiceUI() {
   }
 
   // modal list
+  checkCambioBanner();
+
   const modalList = document.getElementById("voiceModalList");
   if (modalList) {
     modalList.innerHTML = list.length === 0
@@ -1351,13 +1429,21 @@ function renderVoiceAdmin() {
 function playVoiceOne(m) {
   if (!m || !m.audioUrl) return;
   voiceActiveId = m.id;
+  // bip para chamadas direcionadas
+  if (m.destinatarioTelefone && m.destinatarioTelefone === currentUser?.phone) {
+    playBip();
+    // marca como ouvido
+    if (!m.ouvido) {
+      updateDoc(doc(db, "recados_voz", m.id), { ouvido: true }).catch(() => {});
+      m.ouvido = true;
+    }
+  }
   voiceAudio.src = m.audioUrl;
   voiceAudio.play().catch(() => {});
   const title = document.getElementById("voiceActiveTitle");
-  if (title) title.textContent = `${m.autorNome || 'Colaborador'} • ${m.tag || ''}`;
+  if (title) title.textContent = `${m.autorNome || 'Colaborador'} • ${m.tag || ''}${m.destinatarioTelefone ? ' → ' + (m.destinatarioNome || 'você') : ''}`;
   const modalTitle = document.getElementById("voiceModalTitle");
   if (modalTitle) modalTitle.textContent = `${m.autorNome || 'Colaborador'} • ${m.tag || ''}`;
-  // update reactions display for active
   updateVoiceReactions(m);
 }
 
@@ -1602,11 +1688,24 @@ document.querySelectorAll(".voice-tag-btn").forEach((b) => {
 const firstTag = document.querySelector(".voice-tag-btn");
 if (firstTag) firstTag.classList.add("bg-indigo-100", "text-[#4f46e5]");
 
+function populateVoiceDest() {
+  const sel = document.getElementById("voiceDestSelect");
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">Geral (Todos)</option>` + (whitelistEntries || [])
+    .filter((w) => w.id !== currentUser?.phone)
+    .map((w) => `<option value="${w.id}" data-name="${escapeHtml(w.name || '')}">${escapeHtml(w.name || w.id)}${w.base ? ' • ' + escapeHtml(w.base) : ''}</option>`)
+    .join("");
+  if (cur) sel.value = cur;
+}
+
 document.getElementById("voiceRecordBtn")?.addEventListener("click", () => {
+  populateVoiceDest();
   document.getElementById("voiceRecorderModal")?.classList.remove("hidden");
 });
 document.getElementById("voiceModalRecord")?.addEventListener("click", () => {
   document.getElementById("voiceModal")?.classList.add("hidden");
+  populateVoiceDest();
   document.getElementById("voiceRecorderModal")?.classList.remove("hidden");
 });
 document.getElementById("voiceCancelRecBtn")?.addEventListener("click", () => {
@@ -1674,12 +1773,21 @@ document.getElementById("voicePublishRecBtn")?.addEventListener("click", async (
     await uploadBytes(storageRef, voiceBlob);
     const audioUrl = await getDownloadURL(storageRef);
     const dur = 20 - voiceSeconds;
+    const destSel = document.getElementById("voiceDestSelect");
+    const destPhone = destSel?.value || "";
+    const destName = destSel?.selectedOptions?.[0]?.dataset?.name || null;
+    const directed = !!destPhone;
+    if (directed) playBip();
     await addDoc(collection(db, "recados_voz"), {
       autorUid: currentUser.uid,
+      autorTelefone: currentUser.phone,
       autorNome: currentUser.name,
       autorFoto: currentUser.avatarUrl,
       autorBase: currentUser.base,
       tag: voiceSelectedTag,
+      destinatarioTelefone: directed ? destPhone : null,
+      destinatarioNome: directed ? destName : null,
+      ouvido: false,
       duracao: dur > 0 ? dur : 20,
       audioUrl,
       storagePath: path,
