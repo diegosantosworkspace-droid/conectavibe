@@ -17,7 +17,12 @@ import {
   serverTimestamp,
   increment,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
 } from "./firebase-config.js";
 
 // ============================================================================
@@ -409,7 +414,6 @@ function startRealtimeListeners() {
   onSnapshot(postsQuery, (snapshot) => {
     allPosts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
     updatePendingCounter();
-    rebuildRadioQueue();
     renderCategories();
     renderFeed();
     renderSupplierQueue();
@@ -418,6 +422,12 @@ function startRealtimeListeners() {
   onSnapshot(collection(db, "whitelist"), (snapshot) => {
     whitelistEntries = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderWhitelistTable();
+  });
+
+  onSnapshot(query(collection(db, "recados_voz"), orderBy("createdAtMs", "desc")), (snapshot) => {
+    voiceMessages = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderVoiceUI();
+    renderVoiceAdmin();
   });
 }
 
@@ -1237,80 +1247,178 @@ document.getElementById("exportBackupBtn").addEventListener("click", () => {
 });
 
 // ============================================================================
-// RÁDIO CONECTAVIBE (PLAYLIST CONTÍNUA)
+// VOZ DA GALERA (recados em audio 24h) - audioPlayer compartilhado
 // ============================================================================
-function rebuildRadioQueue() {
-  radioQueue = getVisiblePosts()
-    .filter((p) => p.musicTrack && p.musicTrack.previewUrl)
-    .map((p) => p.musicTrack);
+let voiceMessages = [];
+let voiceAudio = new Audio();
+let voiceQueue = [];
+let voiceIndex = 0;
+let voiceActiveId = null;
+
+function recentVoiceMessages() {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  return voiceMessages.filter((m) => (m.createdAtMs || 0) >= cutoff);
 }
 
-function playTrack(track) {
-  if (!track || !track.previewUrl) return;
-  activeMusicBtn = null;
-  document.querySelectorAll(".play-post-music").forEach((b) => { b.textContent = "▶"; });
-  audioPlayer.src = track.previewUrl;
-  audioPlayer.play().catch(() => {});
-  document.getElementById("radioTrackTitle").textContent = track.title;
-  document.getElementById("radioTrackArtist").textContent = track.artist;
-  document.getElementById("radioPlayPauseBtn").textContent = "❚❚";
+function renderVoiceUI() {
+  const list = recentVoiceMessages();
+  const badge = document.getElementById("voiceCountBadge");
+  if (badge) badge.textContent = list.length;
+
+  // avatares
+  const strip = document.getElementById("voiceAvatarStrip");
+  if (strip) {
+    strip.innerHTML = list.map((m) => `
+      <button class="voice-avatar-btn shrink-0 w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow cursor-pointer" data-id="${m.id}" title="${m.autorNome || ''}">
+        <img src="${m.autorFoto || 'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect width=%2240%22 height=%2240%22 fill=%22%234f46e5%22/><text x=%2250%25%22 y=%2254%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23fff%22 font-size=%2216%22 font-weight=%22900%22>CV</text></svg>'}" class="w-full h-full object-cover" />
+      </button>
+    `).join("");
+    strip.querySelectorAll(".voice-avatar-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        const m = list.find((x) => x.id === b.dataset.id);
+        if (m) playVoiceOne(m);
+      });
+    });
+  }
+
+  // modal list
+  const modalList = document.getElementById("voiceModalList");
+  if (modalList) {
+    modalList.innerHTML = list.length === 0
+      ? `<p class="text-xs text-slate-500 text-center py-4">Nenhum recado nas últimas 24h.</p>`
+      : list.map((m) => `
+        <div class="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-100">
+          <img src="${m.autorFoto || ''}" class="w-8 h-8 rounded-full object-cover bg-slate-200" />
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-extrabold text-slate-900 truncate">${m.autorNome || 'Colaborador'} <span class="text-[10px] font-bold text-indigo-600">${m.tag || ''}</span></p>
+            <p class="text-[10px] text-slate-500">${m.autorBase || ''} • ${m.duracao || 0}s</p>
+          </div>
+          <button class="voice-play-one text-[11px] font-bold text-[#4f46e5] hover:underline" data-id="${m.id}">▶</button>
+          ${currentUser && currentUser.role === 'admin' ? `<button class="voice-delete-btn text-[11px] font-bold text-rose-500 hover:underline" data-id="${m.id}">✕</button>` : ""}
+        </div>
+      `).join("");
+    modalList.querySelectorAll(".voice-play-one").forEach((b) => {
+      b.addEventListener("click", () => {
+        const m = list.find((x) => x.id === b.dataset.id);
+        if (m) playVoiceOne(m);
+      });
+    });
+    modalList.querySelectorAll(".voice-delete-btn").forEach((b) => {
+      b.addEventListener("click", async () => {
+        const m = list.find((x) => x.id === b.dataset.id);
+        if (!m) return;
+        if (!confirm("Apagar este recado de voz?")) return;
+        try {
+          if (m.storagePath) await deleteObject(ref(storage, m.storagePath));
+        } catch (_) {}
+        await deleteDoc(doc(db, "recados_voz", m.id));
+      });
+    });
+  }
 }
 
-document.getElementById("radioPlayPauseBtn").addEventListener("click", () => {
-  if (!audioPlayer.src && radioQueue.length > 0) {
-    playTrack(radioQueue[0]);
+function renderVoiceAdmin() {
+  const box = document.getElementById("voiceAdminContainer");
+  if (!box) return;
+  if (!currentUser || currentUser.role !== "admin") {
+    box.innerHTML = `<p class="text-xs text-slate-500">Apenas administradores.</p>`;
     return;
   }
-  if (audioPlayer.paused) {
-    audioPlayer.play().catch(() => {});
-    document.getElementById("radioPlayPauseBtn").textContent = "❚❚";
-  } else {
-    audioPlayer.pause();
-    document.getElementById("radioPlayPauseBtn").textContent = "▶";
+  if (voiceMessages.length === 0) {
+    box.innerHTML = `<p class="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl">Nenhum recado de voz.</p>`;
+    return;
   }
-});
+  box.innerHTML = voiceMessages.map((m) => `
+    <div class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+      <img src="${m.autorFoto || ''}" class="w-8 h-8 rounded-full object-cover bg-slate-200" />
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-extrabold text-slate-900 truncate">${m.autorNome || 'Colaborador'} <span class="text-[10px] font-bold text-indigo-600">${m.tag || ''}</span></p>
+        <p class="text-[10px] text-slate-500">${m.autorBase || ''} • ${m.duracao || 0}s • ${new Date(m.createdAtMs || 0).toLocaleString("pt-BR")}</p>
+      </div>
+      <button class="voice-admin-delete text-[11px] font-bold text-rose-500 hover:underline" data-id="${m.id}" data-path="${m.storagePath || ''}">✕ Apagar</button>
+    </div>
+  `).join("");
+  box.querySelectorAll(".voice-admin-delete").forEach((b) => {
+    b.addEventListener("click", async () => {
+      if (!confirm("Apagar este recado de voz?")) return;
+      const path = b.dataset.path;
+      try { if (path) await deleteObject(ref(storage, path)); } catch (_) {}
+      await deleteDoc(doc(db, "recados_voz", b.dataset.id));
+    });
+  });
+}
 
-document.getElementById("radioNextBtn").addEventListener("click", () => {
-  if (radioQueue.length === 0) return;
-  radioIndex = (radioIndex + 1) % radioQueue.length;
-  playTrack(radioQueue[radioIndex]);
-});
+function playVoiceOne(m) {
+  if (!m || !m.audioUrl) return;
+  voiceActiveId = m.id;
+  voiceAudio.src = m.audioUrl;
+  voiceAudio.play().catch(() => {});
+  const title = document.getElementById("voiceActiveTitle");
+  if (title) title.textContent = `${m.autorNome || 'Colaborador'} • ${m.tag || ''}`;
+  const modalTitle = document.getElementById("voiceModalTitle");
+  if (modalTitle) modalTitle.textContent = `${m.autorNome || 'Colaborador'} • ${m.tag || ''}`;
+  // update reactions display for active
+  updateVoiceReactions(m);
+}
 
-document.getElementById("radioContinuousBtn").addEventListener("click", (e) => {
-  radioContinuous = !radioContinuous;
-  e.target.textContent = radioContinuous ? "🔁 Contínua: ON" : "🔁 Contínua: OFF";
-});
+function updateVoiceReactions(m) {
+  const r = m?.reacoes || { risos: 0, fogo: 0, palmas: 0 };
+  document.querySelectorAll(".voice-react-count").forEach((el) => {
+    const k = el.dataset.react;
+    const map = { risos: "risos", fogo: "fogo", palmas: "palmas" };
+    el.textContent = r[map[k]] || 0;
+  });
+  // bind reaction buttons to active message
+  document.querySelectorAll(".voice-react-btn").forEach((btn) => {
+    btn.onclick = async () => {
+      const m = voiceMessages.find((x) => x.id === voiceActiveId);
+      if (!m) return;
+      const key = btn.dataset.react;
+      const field = `reacoes.${key}`;
+      await updateDoc(doc(db, "recados_voz", m.id), { [field]: increment(1) });
+    };
+  });
+}
 
-audioPlayer.addEventListener("ended", () => {
-  if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; activeMusicBtn = null; }
-  if (radioContinuous && radioQueue.length > 0) {
-    radioIndex = (radioIndex + 1) % radioQueue.length;
-    playTrack(radioQueue[radioIndex]);
-  } else {
-    document.getElementById("radioPlayPauseBtn").textContent = "▶";
+function playAllVoice() {
+  voiceQueue = recentVoiceMessages();
+  voiceIndex = 0;
+  if (voiceQueue.length === 0) return;
+  playVoiceAt(0);
+}
+
+function playVoiceAt(i) {
+  if (i >= voiceQueue.length) {
+    voiceActiveId = null;
+    const t = document.getElementById("voiceActiveTitle");
+    if (t) t.textContent = "Nenhum recado tocando";
+    const mt = document.getElementById("voiceModalTitle");
+    if (mt) mt.textContent = "Nenhum recado tocando";
+    return;
   }
+  voiceIndex = i;
+  playVoiceOne(voiceQueue[i]);
+  voiceAudio.onended = () => playVoiceAt(i + 1);
+}
+
+voiceAudio.addEventListener("timeupdate", () => {
+  const cur = voiceAudio.currentTime || 0;
+  const dur = voiceAudio.duration || 0;
+  const pct = dur ? (cur / dur) * 100 : 0;
+  const fill = document.getElementById("voiceProgressFill");
+  if (fill) fill.style.width = `${pct}%`;
+  const modalFill = document.getElementById("voiceModalFill");
+  if (modalFill) modalFill.style.width = `${pct}%`;
+  const time = `${Math.floor(cur)}s / ${Math.floor(dur)}s`.replace(/(\d+)s/g, (m, n) => `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`);
+  const vt = document.getElementById("voiceActiveTime");
+  if (vt) vt.textContent = `${Math.floor(cur/60)}:${String(Math.floor(cur%60)).padStart(2,'0')} / ${Math.floor(dur/60)}:${String(Math.floor(dur%60)).padStart(2,'0')}`;
+  const mt = document.getElementById("voiceModalTime");
+  if (mt) mt.textContent = `${Math.floor(cur/60)}:${String(Math.floor(cur%60)).padStart(2,'0')} / ${Math.floor(dur/60)}:${String(Math.floor(dur%60)).padStart(2,'0')}`;
 });
 
-audioPlayer.addEventListener("pause", () => {
-  if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; }
-  document.getElementById("radioPlayPauseBtn").textContent = "▶";
-});
-
-audioPlayer.addEventListener("play", () => {
-  if (activeMusicBtn) {
-    document.querySelectorAll(".play-post-music").forEach((b) => { if (b !== activeMusicBtn) b.textContent = "▶"; });
-    activeMusicBtn.textContent = "❚❚";
-  }
-  document.getElementById("radioPlayPauseBtn").textContent = "❚❚";
-});
-
-audioPlayer.addEventListener("timeupdate", () => {
-  const cur = Math.floor(audioPlayer.currentTime || 0);
-  const dur = Math.floor(audioPlayer.duration || 30);
-  document.getElementById("radioCurrentTime").textContent = `0:${String(cur).padStart(2, "0")}`;
-  document.getElementById("radioDurationTime").textContent = `0:${String(dur).padStart(2, "0")}`;
-  document.getElementById("radioProgressFill").style.width = `${Math.min(100, (cur / (dur || 30)) * 100)}%`;
-});
+// ============================================================================
+// RELÓGIO, UF LOCAL (SEM AMERICA/SAO_PAULO), CLIMA & LETREIRO RSS
+// ============================================================================
 
 // ============================================================================
 // RELÓGIO, UF LOCAL (SEM AMERICA/SAO_PAULO), CLIMA & LETREIRO RSS
@@ -1452,42 +1560,151 @@ document.getElementById("bnProfile")?.addEventListener("click", () => {
 document.getElementById("bnAdmin")?.addEventListener("click", () => {
   document.getElementById("navAdminBtn")?.click();
 });
-document.getElementById("bnRadio")?.addEventListener("click", () => {
-  document.getElementById("radioModal")?.classList.remove("hidden");
+document.getElementById("bnVoice")?.addEventListener("click", () => {
+  document.getElementById("voiceModal")?.classList.remove("hidden");
+  renderVoiceUI();
 });
-document.getElementById("closeRadioModalBtn")?.addEventListener("click", () => {
-  document.getElementById("radioModal")?.classList.add("hidden");
+document.getElementById("closeVoiceModalBtn")?.addEventListener("click", () => {
+  document.getElementById("voiceModal")?.classList.add("hidden");
 });
 
-// Sincroniza o modal de rádio com o player principal
-function syncRadioModal() {
-  const t = document.getElementById("radioTrackTitle")?.textContent;
-  const a = document.getElementById("radioTrackArtist")?.textContent;
-  if (t) document.getElementById("radioTrackTitle2").textContent = t;
-  if (a) document.getElementById("radioTrackArtist2").textContent = a;
-  document.getElementById("radioCurrentTime2").textContent = document.getElementById("radioCurrentTime")?.textContent || "0:00";
-  document.getElementById("radioDurationTime2").textContent = document.getElementById("radioDurationTime")?.textContent || "0:30";
-  document.getElementById("radioProgressFill2").style.width = document.getElementById("radioProgressFill")?.style.width || "0%";
-  document.getElementById("radioPlayPauseBtn2").textContent = document.getElementById("radioPlayPauseBtn")?.textContent || "▶";
+document.getElementById("voicePlayAllBtn")?.addEventListener("click", playAllVoice);
+document.getElementById("voiceModalPlayAll")?.addEventListener("click", () => {
+  playAllVoice();
+  document.getElementById("voiceModal")?.classList.add("hidden");
+});
+
+// Gravador
+let voiceSelectedTag = "☕ Bom dia";
+let voiceChunks = [];
+let voiceRecorder = null;
+let voiceTimerInterval = null;
+let voiceSeconds = 0;
+let voiceBlob = null;
+let voiceMime = "";
+
+function supportedVoiceMime() {
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  for (const t of types) {
+    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return "";
 }
-document.getElementById("radioPlayPauseBtn2")?.addEventListener("click", () => {
-  document.getElementById("radioPlayPauseBtn")?.click();
-  setTimeout(syncRadioModal, 50);
+
+document.querySelectorAll(".voice-tag-btn").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".voice-tag-btn").forEach((x) => x.classList.remove("bg-indigo-100", "text-[#4f46e5]"));
+    b.classList.add("bg-indigo-100", "text-[#4f46e5]");
+    voiceSelectedTag = b.dataset.tag;
+  });
 });
-document.getElementById("radioNextBtn2")?.addEventListener("click", () => {
-  document.getElementById("radioNextBtn")?.click();
-  setTimeout(syncRadioModal, 50);
+// default select first tag
+const firstTag = document.querySelector(".voice-tag-btn");
+if (firstTag) firstTag.classList.add("bg-indigo-100", "text-[#4f46e5]");
+
+document.getElementById("voiceRecordBtn")?.addEventListener("click", () => {
+  document.getElementById("voiceRecorderModal")?.classList.remove("hidden");
 });
-document.getElementById("radioContinuousBtn2")?.addEventListener("click", (e) => {
-  document.getElementById("radioContinuousBtn")?.click();
-  e.target.textContent = document.getElementById("radioContinuousBtn")?.textContent || "🔁 Contínua: ON";
+document.getElementById("voiceModalRecord")?.addEventListener("click", () => {
+  document.getElementById("voiceModal")?.classList.add("hidden");
+  document.getElementById("voiceRecorderModal")?.classList.remove("hidden");
+});
+document.getElementById("voiceCancelRecBtn")?.addEventListener("click", () => {
+  if (voiceRecorder && voiceRecorder.state !== "inactive") voiceRecorder.stop();
+  clearInterval(voiceTimerInterval);
+  document.getElementById("voiceRecorderModal")?.classList.add("hidden");
+  document.getElementById("voicePreviewBox")?.classList.add("hidden");
+  document.getElementById("voicePublishRecBtn")?.classList.add("hidden");
+  document.getElementById("voiceRecHint").textContent = "Toque no botão vermelho para gravar.";
+  document.getElementById("voiceRecorderStatus").textContent = "20";
 });
 
-// Sincroniza modal de rádio periodicamente quando aberto
-setInterval(() => {
-  const m = document.getElementById("radioModal");
-  if (m && !m.classList.contains("hidden")) syncRadioModal();
-}, 500);
+document.getElementById("voiceStartRecBtn")?.addEventListener("click", async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    voiceMime = supportedVoiceMime();
+    voiceChunks = [];
+    voiceRecorder = new MediaRecorder(stream, voiceMime ? { mimeType: voiceMime } : undefined);
+    voiceRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) voiceChunks.push(e.data); };
+    voiceRecorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      voiceBlob = new Blob(voiceChunks, { type: voiceMime || "audio/webm" });
+      const url = URL.createObjectURL(voiceBlob);
+      const audio = document.getElementById("voicePreviewAudio");
+      audio.src = url;
+      document.getElementById("voicePreviewBox").classList.remove("hidden");
+      document.getElementById("voicePublishRecBtn").classList.remove("hidden");
+      document.getElementById("voiceRecHint").textContent = "Ouça o preview e publique ou grave de novo.";
+    };
+    voiceSeconds = 20;
+    document.getElementById("voiceRecorderStatus").textContent = voiceSeconds;
+    document.getElementById("voiceStartRecBtn").classList.add("hidden");
+    document.getElementById("voiceStopRecBtn").classList.remove("hidden");
+    document.getElementById("voiceRecHint").textContent = "Gravando...";
+    voiceRecorder.start();
+    voiceTimerInterval = setInterval(() => {
+      voiceSeconds--;
+      document.getElementById("voiceRecorderStatus").textContent = voiceSeconds;
+      if (voiceSeconds <= 0) {
+        document.getElementById("voiceStopRecBtn")?.click();
+      }
+    }, 1000);
+  } catch (err) {
+    alert("Não foi possível acessar o microfone. Verifique as permissões do navegador.");
+  }
+});
+
+document.getElementById("voiceStopRecBtn")?.addEventListener("click", () => {
+  if (voiceRecorder && voiceRecorder.state !== "inactive") voiceRecorder.stop();
+  clearInterval(voiceTimerInterval);
+  document.getElementById("voiceStartRecBtn").classList.remove("hidden");
+  document.getElementById("voiceStopRecBtn").classList.add("hidden");
+  document.getElementById("voiceRecHint").textContent = "Processando...";
+});
+
+document.getElementById("voicePublishRecBtn")?.addEventListener("click", async () => {
+  if (!voiceBlob) return;
+  const btn = document.getElementById("voicePublishRecBtn");
+  btn.disabled = true;
+  btn.textContent = "Publicando...";
+  try {
+    const ext = (voiceMime || "").includes("mp4") ? "m4a" : "webm";
+    const path = `recados_voz/${currentUser.uid}_${Date.now()}.${ext}`;
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, voiceBlob);
+    const audioUrl = await getDownloadURL(storageRef);
+    const dur = 20 - voiceSeconds;
+    await addDoc(collection(db, "recados_voz"), {
+      autorUid: currentUser.uid,
+      autorNome: currentUser.name,
+      autorFoto: currentUser.avatarUrl,
+      autorBase: currentUser.base,
+      tag: voiceSelectedTag,
+      duracao: dur > 0 ? dur : 20,
+      audioUrl,
+      storagePath: path,
+      reacoes: { risos: 0, fogo: 0, palmas: 0 },
+      createdAt: serverTimestamp(),
+      createdAtMs: Date.now()
+    });
+    // reset
+    voiceBlob = null;
+    document.getElementById("voicePreviewBox").classList.add("hidden");
+    btn.classList.add("hidden");
+    btn.disabled = false;
+    btn.textContent = "Publicar Recado";
+    document.getElementById("voiceRecorderModal").classList.add("hidden");
+    document.getElementById("voiceRecHint").textContent = "Toque no botão vermelho para gravar.";
+    document.getElementById("voiceRecorderStatus").textContent = "20";
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao publicar recado. Verifique as regras do Storage.");
+    btn.disabled = false;
+    btn.textContent = "Publicar Recado";
+  }
+});
+
+// (modal de rádio removido — substituído por Voz da Galera)
 
 // Inicializar
 initGate();

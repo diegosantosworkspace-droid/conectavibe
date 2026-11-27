@@ -418,36 +418,37 @@
           </div>
         </div>
 
-        <!-- RÁDIO CONECTAVIBE -->
+        <!-- VOZ DA GALERA (recados em audio 24h) -->
         <div class="rounded-2xl bg-white p-4 border border-slate-200 shadow-sm">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">🎵 Rádio ConectaVibe</span>
-            <button
-              id="radioContinuousBtn"
-              class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 cursor-pointer"
-            >
-              🔁 Contínua: ON
-            </button>
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">🎙️ Voz da Galera • 24h</span>
+            <span id="voiceCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-[#4f46e5]">0</span>
           </div>
-          <div class="flex items-center gap-2.5">
-            <button
-              id="radioPlayPauseBtn"
-              class="w-9 h-9 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
-            >
-              ▶
-            </button>
-            <div class="min-w-0 flex-1">
-              <p id="radioTrackTitle" class="text-xs font-extrabold text-slate-900 truncate">Selecione ou dê Play</p>
-              <p id="radioTrackArtist" class="text-[11px] text-slate-500 truncate">Playlist da Equipe</p>
+
+          <!-- Avatares de quem postou -->
+          <div id="voiceAvatarStrip" class="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-thin"></div>
+
+          <!-- Barra de progresso do audio ativo -->
+          <div class="mb-2">
+            <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+              <span id="voiceActiveTitle" class="truncate font-bold text-slate-700">Nenhum recado tocando</span>
+              <span id="voiceActiveTime" class="font-mono">0:00 / 0:00</span>
             </div>
-            <button id="radioNextBtn" class="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer">⏭</button>
+            <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div id="voiceProgressFill" class="h-full bg-[#4f46e5] w-0 transition-all"></div>
+            </div>
           </div>
-          <div class="mt-2.5 flex items-center gap-2">
-            <span id="radioCurrentTime" class="text-[10px] font-mono text-slate-400">0:00</span>
-            <div id="radioProgressBar" class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden cursor-pointer">
-              <div id="radioProgressFill" class="h-full bg-[#4f46e5] w-0 transition-all"></div>
-            </div>
-            <span id="radioDurationTime" class="text-[10px] font-mono text-slate-400">0:30</span>
+
+          <!-- Reacoes rapidas -->
+          <div class="flex items-center gap-2 mb-3">
+            <button data-react="risos" class="voice-react-btn flex-1 py-1.5 rounded-lg bg-slate-50 hover:bg-amber-50 border border-slate-200 text-xs font-bold text-slate-700">😂 <span class="voice-react-count" data-react="risos">0</span></button>
+            <button data-react="fogo" class="voice-react-btn flex-1 py-1.5 rounded-lg bg-slate-50 hover:bg-rose-50 border border-slate-200 text-xs font-bold text-slate-700">🔥 <span class="voice-react-count" data-react="fogo">0</span></button>
+            <button data-react="palmas" class="voice-react-btn flex-1 py-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-xs font-bold text-slate-700">👏 <span class="voice-react-count" data-react="palmas">0</span></button>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="voicePlayAllBtn" class="flex-1 py-2.5 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white text-xs font-extrabold shadow-sm cursor-pointer">▶ Ouvir Todos</button>
+            <button id="voiceRecordBtn" class="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-extrabold shadow-sm cursor-pointer">🎤 Gravar (20s)</button>
           </div>
         </div>
 
@@ -475,6 +476,15 @@
             <span class="text-[11px] text-slate-500">Posts da equipe interna entram direto no mural</span>
           </div>
           <div id="supplierQueueContainer" class="space-y-3"></div>
+        </div>
+
+        <!-- RECADO DE VOZ (admin) -->
+        <div class="rounded-2xl bg-white p-5 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-extrabold text-slate-900">🎙️ Recados de Voz (Admin)</h2>
+            <span class="text-[11px] text-slate-500">Apague recados inadequados</span>
+          </div>
+          <div id="voiceAdminContainer" class="space-y-2"></div>
         </div>
 
         <!-- PORTARIA EXCLUSIVA POR CELULAR & WHATSAPP -->
@@ -795,9 +805,9 @@
         <span class="text-lg">🏠</span>
         <span class="text-[10px] font-bold">Mural</span>
       </button>
-      <button id="bnRadio" class="flex flex-col items-center gap-0.5 px-3 py-1 text-slate-600">
-        <span class="text-lg">🎵</span>
-        <span class="text-[10px] font-bold">Rádio</span>
+      <button id="bnVoice" class="flex flex-col items-center gap-0.5 px-3 py-1 text-slate-600">
+        <span class="text-lg">🎙️</span>
+        <span class="text-[10px] font-bold">Voz</span>
       </button>
       <button id="bnNewPost" class="flex flex-col items-center -mt-4">
         <span class="w-12 h-12 rounded-full bg-gradient-to-br from-[#4f46e5] to-indigo-700 text-white text-2xl font-bold flex items-center justify-center shadow-lg shadow-indigo-500/40">+</span>
@@ -814,29 +824,58 @@
     </div>
   </nav>
 
-  <!-- MODAL RÁDIO (mobile) -->
-  <div id="radioModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <!-- MODAL VOZ DA GALERA (mobile) -->
+  <div id="voiceModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-extrabold text-slate-900">🎵 Rádio ConectaVibe</h3>
-        <button id="closeRadioModalBtn" class="w-8 h-8 rounded-full bg-slate-100 text-xs font-bold">✕</button>
+        <h3 class="text-sm font-extrabold text-slate-900">🎙️ Voz da Galera • 24h</h3>
+        <button id="closeVoiceModalBtn" class="w-8 h-8 rounded-full bg-slate-100 text-xs font-bold">✕</button>
       </div>
-      <div class="flex items-center gap-2.5">
-        <button id="radioPlayPauseBtn2" class="w-9 h-9 rounded-xl bg-[#4f46e5] text-white font-bold text-xs flex items-center justify-center shrink-0">▶</button>
-        <div class="min-w-0 flex-1">
-          <p id="radioTrackTitle2" class="text-xs font-extrabold text-slate-900 truncate">Selecione ou dê Play</p>
-          <p id="radioTrackArtist2" class="text-[11px] text-slate-500 truncate">Playlist da Equipe</p>
+      <div id="voiceModalProgress" class="mb-3">
+        <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+          <span id="voiceModalTitle" class="truncate font-bold text-slate-700">Nenhum recado tocando</span>
+          <span id="voiceModalTime" class="font-mono">0:00 / 0:00</span>
         </div>
-        <button id="radioNextBtn2" class="px-2 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">⏭</button>
-      </div>
-      <div class="mt-2.5 flex items-center gap-2">
-        <span id="radioCurrentTime2" class="text-[10px] font-mono text-slate-400">0:00</span>
-        <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div id="radioProgressFill2" class="h-full bg-[#4f46e5] w-0 transition-all"></div>
+        <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div id="voiceModalFill" class="h-full bg-[#4f46e5] w-0 transition-all"></div>
         </div>
-        <span id="radioDurationTime2" class="text-[10px] font-mono text-slate-400">0:30</span>
       </div>
-      <button id="radioContinuousBtn2" class="mt-3 w-full py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold">🔁 Contínua: ON</button>
+      <div class="flex items-center gap-2 mb-3">
+        <button id="voiceModalPlayAll" class="flex-1 py-2.5 rounded-xl bg-[#4f46e5] text-white text-xs font-extrabold">▶ Ouvir Todos</button>
+        <button id="voiceModalRecord" class="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-xs font-extrabold">🎤 Gravar (20s)</button>
+      </div>
+      <div id="voiceModalList" class="max-h-48 overflow-y-auto space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- MODAL GRAVADOR DE VOZ -->
+  <div id="voiceRecorderModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl text-center">
+      <h3 class="text-base font-extrabold text-slate-900 mb-1">🎤 Gravar Recado (20s)</h3>
+      <p class="text-xs text-slate-500 mb-4">Escolha uma tag e grave até 20 segundos.</p>
+
+      <div class="flex flex-wrap gap-1.5 justify-center mb-4">
+        <button class="voice-tag-btn px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold text-slate-700" data-tag="☕ Bom dia">☕ Bom dia</button>
+        <button class="voice-tag-btn px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold text-slate-700" data-tag="🔥 Meta Batida">🔥 Meta Batida</button>
+        <button class="voice-tag-btn px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold text-slate-700" data-tag="🚚 Aviso Rápido">🚚 Aviso Rápido</button>
+        <button class="voice-tag-btn px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold text-slate-700" data-tag="😂 Resenha">😂 Resenha</button>
+      </div>
+
+      <div id="voiceRecorderStatus" class="text-2xl font-black text-slate-900 mb-3">20</div>
+      <div class="flex items-center justify-center gap-3 mb-4">
+        <button id="voiceStartRecBtn" class="w-16 h-16 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-2xl flex items-center justify-center shadow-lg">●</button>
+        <button id="voiceStopRecBtn" class="hidden w-16 h-16 rounded-full bg-slate-800 hover:bg-slate-900 text-white text-2xl flex items-center justify-center shadow-lg">■</button>
+      </div>
+      <p id="voiceRecHint" class="text-[11px] text-slate-500 mb-4">Toque no botão vermelho para gravar.</p>
+
+      <div id="voicePreviewBox" class="hidden mb-4">
+        <audio id="voicePreviewAudio" controls class="w-full"></audio>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="voiceCancelRecBtn" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Cancelar</button>
+        <button id="voicePublishRecBtn" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold hidden">Publicar Recado</button>
+      </div>
     </div>
   </div>
 
