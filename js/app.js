@@ -2127,6 +2127,22 @@ function rebuildRadioQueue() {
   radioQueue = getVisiblePosts()
     .filter((p) => p.musicTrack && p.musicTrack.previewUrl)
     .map((p) => p.musicTrack);
+  // Atualiza o card da radio com a primeira faixa (se houver)
+  const titleEl = document.getElementById("radioTrackTitle");
+  const artistEl = document.getElementById("radioTrackArtist");
+  const idxEl = document.getElementById("radioPlaylistIndex");
+  const playBtn = document.getElementById("radioPlayPauseBtn");
+  if (radioQueue.length > 0) {
+    if (titleEl) titleEl.textContent = radioQueue[0].title;
+    if (artistEl) artistEl.textContent = radioQueue[0].artist;
+    if (idxEl) idxEl.textContent = `Faixa 1 de ${radioQueue.length}`;
+    if (playBtn) { playBtn.disabled = false; playBtn.classList.remove("opacity-50"); }
+  } else {
+    if (titleEl) titleEl.textContent = "Nenhuma música anexada";
+    if (artistEl) artistEl.textContent = "Anexe músicas aos posts para tocar";
+    if (idxEl) idxEl.textContent = "Faixa 0 de 0";
+    if (playBtn) { playBtn.disabled = true; playBtn.classList.add("opacity-50"); }
+  }
 }
 
 function playTrack(track) {
