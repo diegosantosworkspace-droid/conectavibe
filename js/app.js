@@ -85,6 +85,23 @@ const audioPlayer = new Audio();
 const storage = getStorage();
 let activeMusicBtn = null;
 
+function syncPlayButtons() {
+  const cur = audioPlayer.src;
+  const playing = !audioPlayer.paused && !!cur;
+  document.querySelectorAll(".play-post-music, .track-play-btn").forEach((btn) => {
+    const isTrack = btn.classList.contains("track-play-btn");
+    const span = isTrack ? btn.querySelector("span:last-child") : btn;
+    const match = !!cur && !!btn.dataset.preview && cur === btn.dataset.preview;
+    if (span) span.textContent = (match && playing) ? "❚❚" : "▶";
+  });
+}
+audioPlayer.addEventListener("play", syncPlayButtons);
+audioPlayer.addEventListener("pause", syncPlayButtons);
+audioPlayer.addEventListener("ended", () => {
+  if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; activeMusicBtn = null; }
+  syncPlayButtons();
+});
+
 // Bip de radio comunicador (Web Audio API)
 function playBip() {
   try {
@@ -946,24 +963,6 @@ function bindPostCardEvents() {
       btn.textContent = "❚❚";
     });
     musicObserver.observe(btn);
-  });
-
-  // Sincroniza todos os botoes de play (posts + trilhas)
-  function syncPlayButtons() {
-    const cur = audioPlayer.src;
-    const playing = !audioPlayer.paused && !!cur;
-    document.querySelectorAll(".play-post-music, .track-play-btn").forEach((btn) => {
-      const isTrack = btn.classList.contains("track-play-btn");
-      const span = isTrack ? btn.querySelector("span:last-child") : btn;
-      const match = !!cur && !!btn.dataset.preview && cur === btn.dataset.preview;
-      if (span) span.textContent = (match && playing) ? "❚❚" : "▶";
-    });
-  }
-  audioPlayer.addEventListener("play", syncPlayButtons);
-  audioPlayer.addEventListener("pause", syncPlayButtons);
-  audioPlayer.addEventListener("ended", () => {
-    if (activeMusicBtn) { activeMusicBtn.textContent = "▶"; activeMusicBtn = null; }
-    syncPlayButtons();
   });
 
   document.querySelectorAll(".delete-post-btn").forEach((btn) => {
