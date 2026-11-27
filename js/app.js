@@ -2246,7 +2246,7 @@ document.getElementById("videoStartRecBtn")?.addEventListener("click", () => {
   if (!videoStream) return;
   videoMime = supportedVideoMime();
   videoChunks = [];
-  videoRecorder = new MediaRecorder(videoStream, videoMime ? { mimeType: videoMime } : undefined);
+  videoRecorder = new MediaRecorder(videoStream, videoMime ? { mimeType: videoMime, videoBitsPerSecond: 250000, audioBitsPerSecond: 64000 } : { videoBitsPerSecond: 250000, audioBitsPerSecond: 64000 });
   videoRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) videoChunks.push(e.data); };
   videoRecorder.onstop = () => {
     videoBlob = new Blob(videoChunks, { type: videoMime || "video/webm" });
@@ -2281,8 +2281,8 @@ document.getElementById("videoStopRecBtn")?.addEventListener("click", () => {
 document.getElementById("videoPublishRecBtn")?.addEventListener("click", async () => {
   if (!videoBlob) return;
   // Limite de tamanho (Firestore doc ~1MB)
-  if (videoBlob.size > 700 * 1024) {
-    alert("Vídeo muito grande. Grave um vídeo mais curto (até ~10s).");
+  if (videoBlob.size > 900 * 1024) {
+    alert("Vídeo muito grande (" + Math.round(videoBlob.size/1024) + " KB). Grave um vídeo mais curto (até ~8s).");
     return;
   }
   const btn = document.getElementById("videoPublishRecBtn");
