@@ -672,24 +672,30 @@ function renderFeed() {
 
   emptyState.classList.add("hidden");
 
-  // Separa destaques (fixados no topo) do restante
+  // Agrupa por categoria, com Destaques sempre primeiro
   const featured = list.filter((p) => p.isFeatured);
   const regular = list.filter((p) => !p.isFeatured);
 
-  // Agrupa o restante por dia
+  const categoryOrder = ["Trabalho", "Fornecedores", "Negócios", "Diversão"];
   const groups = new Map();
   for (const p of regular) {
-    const k = dayKey(p.createdAtMs);
+    const k = p.category || "Outros";
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(p);
   }
+  const orderedKeys = [...groups.keys()].sort((a, b) => {
+    const ia = categoryOrder.indexOf(a);
+    const ib = categoryOrder.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
 
   let html = "";
   if (featured.length > 0) {
-    html += `<section class="mb-6"><h2 class="feed-date-header">⭐ Destaques</h2><div class="featured-carousel">${featured.map(buildPostCardHTML).join("")}</div></section>`;
+    html += `<section class="mb-6"><h2 class="feed-date-header">⭐ Destaques</h2><div class="masonry-grid">${featured.map(buildPostCardHTML).join("")}</div></section>`;
   }
-  for (const [k, posts] of groups) {
-    html += `<section class="mb-6"><h2 class="feed-date-header">${dayLabel(k)}</h2><div class="masonry-grid">${posts.map(buildPostCardHTML).join("")}</div></section>`;
+  for (const k of orderedKeys) {
+    const posts = groups.get(k);
+    html += `<section class="mb-6"><h2 class="feed-date-header">${k}</h2><div class="masonry-grid">${posts.map(buildPostCardHTML).join("")}</div></section>`;
   }
 
   container.className = "";
