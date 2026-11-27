@@ -39,72 +39,123 @@
     .eq-bar-1 { animation: pulse-eq 0.7s infinite ease-in-out; }
     .eq-bar-2 { animation: pulse-eq 0.5s infinite ease-in-out 0.15s; }
     .eq-bar-3 { animation: pulse-eq 0.8s infinite ease-in-out 0.3s; }
+
+    /* ===== Portaria moderna (3D flutuante) ===== */
+    .gate-orb { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: .55; animation: gate-drift 14s ease-in-out infinite; }
+    .gate-orb-1 { width: 420px; height: 420px; background: #4f46e5; top: -12%; left: -8%; }
+    .gate-orb-2 { width: 360px; height: 360px; background: #06b6d4; bottom: -14%; right: -6%; animation-delay: 4s; }
+    .gate-orb-3 { width: 300px; height: 300px; background: #8b5cf6; top: 38%; left: 52%; animation-delay: 8s; }
+    @keyframes gate-drift { 0%,100% { transform: translate(0,0); } 50% { transform: translate(50px,-40px); } }
+
+    .gate-scene { position: absolute; inset: 0; perspective: 1200px; pointer-events: none; z-index: 1; }
+    .gate-float { position: absolute; width: 72px; height: 72px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 30px;
+      background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 24px 48px rgba(0,0,0,0.35);
+      animation: gate-float 6s ease-in-out infinite; transform-style: preserve-3d; }
+    .gate-float.fc1 { top: 14%; left: 9%;  animation-delay: 0s;   transform: rotateY(18deg) rotateX(8deg); }
+    .gate-float.fc2 { top: 22%; right: 7%; animation-delay: 1.3s; transform: rotateY(-16deg) rotateX(6deg); }
+    .gate-float.fc3 { bottom: 18%; left: 11%; animation-delay: 2.6s; transform: rotateY(12deg) rotateX(-7deg); }
+    .gate-float.fc4 { bottom: 14%; right: 9%; animation-delay: 3.9s; transform: rotateY(-20deg) rotateX(-4deg); }
+    @keyframes gate-float {
+      0%,100% { transform: translateY(0) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg)); }
+      50%     { transform: translateY(-26px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg)); }
+    }
+    .fc1 { --ry: 18deg; --rx: 8deg; }
+    .fc2 { --ry: -16deg; --rx: 6deg; }
+    .fc3 { --ry: 12deg; --rx: -7deg; }
+    .fc4 { --ry: -20deg; --rx: -4deg; }
+
+    .glass-card { background: rgba(255,255,255,0.07); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 30px 80px rgba(0,0,0,0.45); }
+    .gate-input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff;
+      transition: border-color .2s, box-shadow .2s, background .2s; }
+    .gate-input::placeholder { color: rgba(255,255,255,0.45); }
+    .gate-input:focus { outline: none; border-color: #818cf8; background: rgba(255,255,255,0.1); box-shadow: 0 0 0 4px rgba(99,102,241,0.25); }
+    .gate-btn { background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%); box-shadow: 0 12px 32px rgba(99,102,241,0.45);
+      transition: transform .15s, box-shadow .15s; }
+    .gate-btn:hover { transform: translateY(-1px); box-shadow: 0 16px 40px rgba(99,102,241,0.55); }
+    .gate-btn:active { transform: translateY(0); }
+    .gate-title { background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #67e8f9 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .gate-logo { background: linear-gradient(135deg, #6366f1, #06b6d4); box-shadow: 0 12px 40px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.25); }
+    .gate-badge { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35); color: #6ee7b7; }
+
+    /* ===== Separadores de data no feed ===== */
+    .feed-date-header { font-size: 13px; font-weight: 800; color: #475569; margin: 4px 0 10px; padding-left: 4px;
+      display: flex; align-items: center; gap: 8px; }
+    .feed-date-header::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, #cbd5e1, transparent); }
   </style>
 </head>
 <body class="min-h-screen w-full overflow-x-hidden bg-[#f4f6fb]">
 
-  <!-- TELA 0: PORTARIA EXCLUSIVA POR CELULAR -->
-  <div id="gateScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
-    <div class="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl border border-slate-200">
-      <div class="flex items-center gap-3 mb-5">
-        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#4f46e5] to-indigo-700 text-white font-black text-lg flex items-center justify-center shadow-md">
-          CV
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">ConectaVibe</h1>
-            <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-100 text-emerald-700">Portaria Ativa</span>
+  <!-- TELA 0: PORTARIA MODERNA (3D FLUTUANTE) -->
+  <div id="gateScreen" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[#050816]">
+    <!-- Orbs de gradiente animados -->
+    <div class="gate-orb gate-orb-1"></div>
+    <div class="gate-orb gate-orb-2"></div>
+    <div class="gate-orb gate-orb-3"></div>
+
+    <!-- Cartões 3D flutuantes -->
+    <div class="gate-scene" aria-hidden="true">
+      <div class="gate-float fc1">🚀</div>
+      <div class="gate-float fc2">🚚</div>
+      <div class="gate-float fc3">🏆</div>
+      <div class="gate-float fc4">⚡</div>
+    </div>
+
+    <!-- Card de vidro -->
+    <div class="relative z-10 w-full max-w-md mx-4">
+      <div class="glass-card rounded-3xl p-8">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="gate-logo w-12 h-12 rounded-2xl text-white font-black text-lg flex items-center justify-center">CV</div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-2xl font-black tracking-tight gate-title">ConectaVibe</h1>
+              <span class="gate-badge px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full">Portaria Ativa</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Acesso restrito a números convidados via WhatsApp</p>
           </div>
-          <p class="text-xs text-slate-500">Acesso restrito a números convidados via WhatsApp</p>
         </div>
+
+        <div id="gateBootstrapNotice" class="hidden mb-4 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-xs text-amber-200">
+          <strong>👑 Primeiro Acesso Detectado:</strong> a portaria está vazia. O número informado abaixo será cadastrado automaticamente como <strong>Administrador Principal</strong>.
+        </div>
+
+        <form id="gateForm" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Seu Celular com DDD *</label>
+            <input
+              type="tel"
+              id="gatePhoneInput"
+              placeholder="(11) 99999-9999"
+              required
+              class="gate-input w-full px-4 py-3 rounded-xl text-base font-semibold"
+            />
+          </div>
+
+          <div id="gateNameGroup" class="hidden">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Seu Nome (Primeiro Acesso Admin) *</label>
+            <input
+              type="text"
+              id="gateAdminNameInput"
+              value="Diego Santos"
+              class="gate-input w-full px-4 py-2.5 rounded-xl text-sm font-medium"
+            />
+          </div>
+
+          <div id="gateErrorBox" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-400/30 text-xs font-semibold text-rose-300"></div>
+
+          <button
+            type="submit"
+            id="gateSubmitBtn"
+            class="gate-btn w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer"
+          >
+            Validar Celular e Entrar →
+          </button>
+        </form>
+
+        <p class="text-center text-[11px] text-slate-500 mt-5">ConectaVibe • Mural Corporativo &amp; Hub de Fornecedores</p>
       </div>
-
-      <div id="gateBootstrapNotice" class="hidden mb-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-        <strong>👑 Primeiro Acesso Detectado:</strong> A portaria está vazia. O número informado abaixo será cadastrado automaticamente como <strong>Administrador Principal</strong>.
-      </div>
-
-      <form id="gateForm" class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Seu Celular com DDD *</label>
-          <input
-            type="tel"
-            id="gatePhoneInput"
-            placeholder="(11) 99999-9999"
-            required
-            class="w-full px-4 py-3 rounded-xl border border-slate-300 text-base font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]"
-          />
-        </div>
-
-        <div id="gateNameGroup" class="hidden">
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Seu Nome (Primeiro Acesso Admin) *</label>
-          <input
-            type="text"
-            id="gateAdminNameInput"
-            value="Diego Santos"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Código do Convite (Opcional se já liberado)</label>
-          <input
-            type="text"
-            id="gateTokenInput"
-            placeholder="Ex: CV-8492"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#4f46e5]"
-          />
-        </div>
-
-        <div id="gateErrorBox" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700"></div>
-
-        <button
-          type="submit"
-          id="gateSubmitBtn"
-          class="w-full py-3.5 rounded-xl bg-[#4f46e5] hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition cursor-pointer"
-        >
-          Validar Celular e Entrar →
-        </button>
-      </form>
     </div>
   </div>
 

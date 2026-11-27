@@ -190,7 +190,6 @@ document.getElementById("gateForm").addEventListener("submit", async (e) => {
   errBox.classList.add("hidden");
 
   const phoneNorm = normalizeBrPhone(document.getElementById("gatePhoneInput").value);
-  const tokenInput = document.getElementById("gateTokenInput").value.trim().toUpperCase();
 
   if (phoneNorm.length < 12) {
     errBox.textContent = "Informe um número de celular válido com DDD.";
@@ -234,14 +233,6 @@ document.getElementById("gateForm").addEventListener("submit", async (e) => {
     const entry = whitelistEntries.find((w) => w.id === phoneNorm);
     if (!entry || entry.active === false) {
       errBox.textContent = "⛔ Acesso Negado: Este celular não consta na lista de convidados autorizados.";
-      errBox.classList.remove("hidden");
-      btn.disabled = false;
-      btn.textContent = "Validar Celular e Entrar →";
-      return;
-    }
-
-    if (tokenInput && entry.token && tokenInput !== entry.token.toUpperCase()) {
-      errBox.textContent = "Código de convite inválido para este número.";
       errBox.classList.remove("hidden");
       btn.disabled = false;
       btn.textContent = "Validar Celular e Entrar →";
@@ -426,6 +417,23 @@ function updatePendingCounter() {
 // ============================================================================
 // RENDERIZAÇÃO DO FEED MASONRY (DESTAQUES FIXADOS NO TOPO)
 // ============================================================================
+function dayKey(ms) {
+  const d = new Date(ms || Date.now());
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function dayLabel(key) {
+  const parts = key.split("-").map(Number);
+  const d = new Date(parts[0], parts[1], parts[2]);
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+  const yest = new Date(now); yest.setDate(yest.getDate() - 1);
+  const yestKey = `${yest.getFullYear()}-${yest.getMonth()}-${yest.getDate()}`;
+  if (key === todayKey) return "Hoje";
+  if (key === yestKey) return "Ontem";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+}
+
 function renderFeed() {
   const container = document.getElementById("postsMasonryContainer");
   const emptyState = document.getElementById("emptyFeedState");
@@ -451,22 +459,40 @@ function renderFeed() {
     );
   }
 
-  // Destaques sempre fixados no topo
-  list.sort((a, b) => {
-    if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) {
-      return a.isFeatured ? -1 : 1;
-    }
-    return (b.createdAtMs || 0) - (a.createdAtMs || 0);
-  });
+  // Ordenação base por data (mais recentes primeiro)
+  list.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
 
   if (list.length === 0) {
+    container.className = "";
     container.innerHTML = "";
     emptyState.classList.remove("hidden");
     return;
   }
 
   emptyState.classList.add("hidden");
-  container.innerHTML = list.map((post) => buildPostCardHTML(post)).join("");
+
+  // Separa destaques (fixados no topo) do restante
+  const featured = list.filter((p) => p.isFeatured);
+  const regular = list.filter((p) => !p.isFeatured);
+
+  // Agrupa o restante por dia
+  const groups = new Map();
+  for (const p of regular) {
+    const k = dayKey(p.createdAtMs);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(p);
+  }
+
+  let html = "";
+  if (featured.length > 0) {
+    html += `<section class="mb-6"><h2 class="feed-date-header">⭐ Destaques</h2><div class="masonry-grid">${featured.map(buildPostCardHTML).join("")}</div></section>`;
+  }
+  for (const [k, posts] of groups) {
+    html += `<section class="mb-6"><h2 class="feed-date-header">${dayLabel(k)}</h2><div class="masonry-grid">${posts.map(buildPostCardHTML).join("")}</div></section>`;
+  }
+
+  container.className = "";
+  container.innerHTML = html;
   bindPostCardEvents();
 }
 
