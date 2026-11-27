@@ -27,17 +27,45 @@
       color: #0f172a;
       touch-action: pan-y;
     }
+    /* Masonry classico (CSS columns) */
     .masonry-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-      align-items: start;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
     }
-    @media (min-width: 1024px) {
-      .masonry-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .masonry-item {
+      display: block;
+      width: 100%;
+      margin-bottom: 0;
     }
-    /* compat: masonry-item vira bloco normal no grid */
-    .masonry-item { break-inside: auto; display: block; margin-bottom: 0; width: 100%; }
+    @media (min-width: 768px) {
+      .masonry-grid {
+        display: block;
+        column-count: 2;
+        column-gap: 1.25rem;
+      }
+      .masonry-item {
+        break-inside: avoid;
+        display: inline-block;
+        margin-bottom: 1.25rem;
+      }
+    }
+    @media (min-width: 1280px) {
+      .masonry-grid {
+        column-count: 3;
+      }
+    }
+
+    /* Garante que apenas o topo principal fique fixo no celular */
+    @media (max-width: 1023px) {
+      aside,
+      .stories-bar,
+      .profile-card {
+        position: relative !important;
+        top: auto !important;
+        z-index: 10;
+      }
+    }
     .masonry-item {
       break-inside: avoid;
       margin-bottom: 1.25rem;
