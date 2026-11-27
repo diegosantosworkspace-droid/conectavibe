@@ -691,7 +691,7 @@ function buildPostCardHTML(post) {
       </div>`
     : post.imageUrl
     ? `<div class="relative bg-slate-900 overflow-hidden cursor-pointer open-read-trigger" data-id="${post.id}">
-        <img src="${post.imageUrl}" alt="${escapeHtml(post.title)}" class="w-full max-h-96 object-contain mx-auto" />
+        <img src="${post.imageUrl}" alt="${escapeHtml(post.title)}" class="w-full h-[220px] object-cover" />
         <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 text-xs font-extrabold text-slate-900 shadow">${post.topEmoji || "🚀"} ${escapeHtml(post.category)}</span>
         ${post.isFeatured ? `<span class="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-extrabold text-slate-950 shadow-md" style="background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);">${escapeHtml(post.featuredLabel || "⭐ Área de Destaque")}</span>` : ""}
         <span class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-slate-950/75 text-white text-[11px] font-bold">👁️ ${post.views || 0}</span>
