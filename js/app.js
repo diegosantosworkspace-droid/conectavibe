@@ -82,6 +82,7 @@ let draftMusicTrack = null;
 
 // Rádio Contínua
 const audioPlayer = new Audio();
+const storage = getStorage();
 let radioQueue = [];
 let activeMusicBtn = null;
 
