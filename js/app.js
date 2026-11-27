@@ -322,6 +322,7 @@ async function completeLogin(whitelistProfile) {
   };
 
   localStorage.setItem("cv_logged_phone", currentUser.phone);
+  localStorage.setItem("cv_logged_uid", currentUser.uid);
   await setDoc(doc(db, "users", currentUser.uid), {
     phone: currentUser.phone,
     name: currentUser.name,
@@ -1814,6 +1815,115 @@ document.getElementById("voicePublishRecBtn")?.addEventListener("click", async (
 });
 
 // (modal de rádio removido — substituído por Voz da Galera)
+
+// ===== PULL-TO-REFRESH (mobile) =====
+let ptrStartY = 0;
+let ptrPulling = false;
+const ptrPill = document.getElementById("ptrPill");
+
+function setPtrPill(text, show) {
+  if (!ptrPill) return;
+  ptrPill.textContent = text;
+  ptrPill.classList.toggle("show", show);
+}
+
+async function refreshWeather() {
+  if (!("geolocation" in navigator)) return;
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const { latitude, longitude } = pos.coords;
+      const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`);
+      const wData = await wRes.json();
+      const temp = Math.round(wData.current.temperature_2m);
+      const code = wData.current.weather_code;
+      const icon = code >= 51 ? "🌧️" : code >= 2 ? "⛅" : "☀️";
+      const txt = `${icon} ${temp}°C`;
+      const b = document.getElementById("localWeatherBadge"); if (b) b.textContent = txt;
+      const m = document.getElementById("mcbWeather"); if (m) m.textContent = txt;
+    } catch (_) {}
+  }, () => {}, { timeout: 5000 });
+}
+
+async function refreshRss() {
+  try {
+    const feeds = [
+      { url: "https://g1.globo.com/rss/g1/economia/", name: "G1 Economia" },
+      { url: "https://g1.globo.com/rss/g1/brasil/", name: "G1 Brasil" },
+      { url: "https://g1.globo.com/rss/g1/tecnologia/", name: "G1 Tecnologia" }
+    ];
+    const loaded = [];
+    for (const f of feeds) {
+      const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(f.url)}`);
+      const json = await res.json();
+      if (json.status === "ok" && Array.isArray(json.items)) {
+        json.items.slice(0, 10).forEach((item) => loaded.push({ title: item.title, source: f.name, url: item.link }));
+      }
+    }
+    if (loaded.length > 0) {
+      rssHeadlines = loaded;
+      rssIndex = 0;
+      const item = rssHeadlines[0];
+      const link = document.getElementById("rssHeadlineLink");
+      if (link) { link.textContent = item.title; link.href = item.url; }
+    }
+  } catch (_) {}
+}
+
+async function refreshAll() {
+  setPtrPill("↻ Atualizando...", true);
+  try {
+    const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAtMs", "desc")));
+    allPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    updatePendingCounter();
+    renderCategories();
+    renderFeed();
+    renderSupplierQueue();
+  } catch (_) {}
+  try {
+    const vs = await getDocs(query(collection(db, "recados_voz"), orderBy("createdAtMs", "desc")));
+    voiceMessages = vs.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderVoiceUI();
+    renderVoiceAdmin();
+  } catch (_) {}
+  refreshWeather();
+  refreshRss();
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.getRegistration().then((reg) => { if (reg) reg.update(); }).catch(() => {});
+  }
+  setTimeout(() => setPtrPill("", false), 900);
+}
+
+window.addEventListener("touchstart", (e) => {
+  if (window.scrollY <= 0 && e.touches.length === 1) {
+    ptrStartY = e.touches[0].clientY;
+    ptrPulling = true;
+  }
+}, { passive: true });
+
+window.addEventListener("touchmove", (e) => {
+  if (!ptrPulling) return;
+  const dy = e.touches[0].clientY - ptrStartY;
+  if (dy > 10) {
+    setPtrPill(dy > 70 ? "↻ Solte para atualizar" : "↓ Puxe para atualizar", true);
+  } else {
+    setPtrPill("", false);
+  }
+}, { passive: true });
+
+window.addEventListener("touchend", (e) => {
+  if (!ptrPulling) return;
+  ptrPulling = false;
+  const dy = (e.changedTouches[0]?.clientY || 0) - ptrStartY;
+  if (dy > 70) {
+    refreshAll();
+  } else {
+    setPtrPill("", false);
+  }
+}, { passive: true });
+
+// ===== PERSISTÊNCIA DE SESSÃO =====
+// (cv_logged_phone já é salvo; adiciona uid para referência)
+// completeLogin já salva cv_logged_phone; adicionamos cv_logged_uid lá.
 
 // Inicializar
 initGate();
