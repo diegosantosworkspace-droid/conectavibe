@@ -454,11 +454,7 @@ function startRealtimeListeners() {
     renderWhitelistTable();
   });
 
-  onSnapshot(query(collection(db, "recados_voz"), orderBy("createdAtMs", "desc")), (snapshot) => {
-    voiceMessages = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    renderVoiceUI();
-    renderVoiceAdmin();
-  });
+  // (recados_voz removido - substituido por Trilhas do Mural)
 }
 
 function getVisiblePosts() {
