@@ -298,6 +298,9 @@ async function completeLogin(whitelistProfile) {
   document.getElementById("gateScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
 
+  const bn = document.getElementById("bottomNav");
+  if (bn) bn.classList.remove("hidden");
+
   applyRoleUI();
   renderSidebarProfile();
   renderCategories();
@@ -319,6 +322,11 @@ function applyRoleUI() {
   const navAdmin = document.getElementById("navAdminBtn");
   const catSelect = document.getElementById("postCategoryInput");
   const highlightBox = document.getElementById("highlightOptionBox");
+  const bnAdmin = document.getElementById("bnAdmin");
+  if (bnAdmin) {
+    if (currentUser.role === "admin") bnAdmin.classList.remove("hidden");
+    else bnAdmin.classList.add("hidden");
+  }
 
   if (currentUser.role === "admin") {
     badgeTop.textContent = "👑 Admin";
@@ -447,9 +455,11 @@ function dayLabel(key) {
   const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
   const yest = new Date(now); yest.setDate(yest.getDate() - 1);
   const yestKey = `${yest.getFullYear()}-${yest.getMonth()}-${yest.getDate()}`;
-  if (key === todayKey) return "Hoje";
-  if (key === yestKey) return "Ontem";
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  const weekday = d.toLocaleDateString("pt-BR", { weekday: "long" });
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  if (key === todayKey) return `HOJE • ${cap(weekday)}, ${d.getDate()} ${d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}`;
+  if (key === yestKey) return `ONTEM • ${cap(weekday)}, ${d.getDate()} ${d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}`;
+  return `${String(d.getDate()).padStart(2, "0")} DE ${d.toLocaleDateString("pt-BR", { month: "long" }).toUpperCase()}`;
 }
 
 function renderFeed() {
@@ -503,7 +513,7 @@ function renderFeed() {
 
   let html = "";
   if (featured.length > 0) {
-    html += `<section class="mb-6"><h2 class="feed-date-header">⭐ Destaques</h2><div class="masonry-grid">${featured.map(buildPostCardHTML).join("")}</div></section>`;
+    html += `<section class="mb-6"><h2 class="feed-date-header">⭐ Destaques</h2><div class="featured-carousel">${featured.map(buildPostCardHTML).join("")}</div></section>`;
   }
   for (const [k, posts] of groups) {
     html += `<section class="mb-6"><h2 class="feed-date-header">${dayLabel(k)}</h2><div class="masonry-grid">${posts.map(buildPostCardHTML).join("")}</div></section>`;
@@ -1005,6 +1015,17 @@ function renderSidebarProfile() {
   document.getElementById("sidebarUserName").textContent = currentUser.name;
   document.getElementById("sidebarUserSub").textContent = currentUser.base;
   document.getElementById("sidebarVibeText").textContent = `"${currentUser.vibe}"`;
+
+  // Banner compacto mobile
+  const mcbAvatarImg = document.getElementById("mcbAvatarImg");
+  if (mcbAvatarImg) {
+    mcbAvatarImg.src = currentUser.avatarUrl;
+    document.getElementById("mcbAvatarRing").style.backgroundColor = currentUser.ringColor;
+    document.getElementById("mcbAvatarEmoji").textContent = currentUser.avatarEmoji;
+    document.getElementById("mcbName").textContent = currentUser.name;
+    document.getElementById("mcbSub").textContent = currentUser.base;
+    document.getElementById("mcbVibe").textContent = `"${currentUser.vibe}"`;
+  }
 }
 
 document.getElementById("openProfileModalBtn").addEventListener("click", () => {
@@ -1297,6 +1318,8 @@ function initClockAndWeather() {
     const greet = h < 12 ? "BOM DIA" : h < 18 ? "BOA TARDE" : "BOA NOITE";
     const firstName = (currentUser?.name || "").split(" ")[0].toUpperCase();
     document.getElementById("greetingText").textContent = `${greet}, ${firstName}!`;
+    const mcbGreet = document.getElementById("mcbGreet");
+    if (mcbGreet) mcbGreet.textContent = `${greet}, ${firstName}! • ${now.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`;
     document.getElementById("liveClockText").textContent = now.toLocaleTimeString("pt-BR");
     document.getElementById("liveDateText").textContent = now.toLocaleDateString("pt-BR", {
       weekday: "long",
@@ -1320,7 +1343,10 @@ function initClockAndWeather() {
     "America/Cuiaba": "MT",
     "America/Campo_Grande": "MS"
   };
-  document.getElementById("localUfBadge").textContent = ufMap[tz] || "SP";
+  const uf = ufMap[tz] || "SP";
+  document.getElementById("localUfBadge").textContent = uf;
+  const mcbUf = document.getElementById("mcbUf");
+  if (mcbUf) mcbUf.textContent = uf;
 
   if ("geolocation" in navigator) {
     navigator.geolocation.getCurrentPosition(
@@ -1335,10 +1361,14 @@ function initClockAndWeather() {
           const code = wData.current.weather_code;
           const icon = code >= 51 ? "🌧️" : code >= 2 ? "⛅" : "☀️";
           document.getElementById("localWeatherBadge").textContent = `${icon} ${temp}°C`;
+          const mcbW = document.getElementById("mcbWeather");
+          if (mcbW) mcbW.textContent = `${icon} ${temp}°C`;
         } catch (_) {}
       },
       () => {
         document.getElementById("localWeatherBadge").textContent = "⛅ 24°C";
+        const mcbW = document.getElementById("mcbWeather");
+        if (mcbW) mcbW.textContent = "⛅ 24°C";
       },
       { timeout: 5000 }
     );
@@ -1406,6 +1436,54 @@ document.getElementById("searchPostsInput").addEventListener("input", (e) => {
   searchQuery = e.target.value.trim();
   renderFeed();
 });
+
+// ===== BOTTOM NAV (mobile) =====
+document.getElementById("bnMural")?.addEventListener("click", () => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+document.getElementById("bnNewPost")?.addEventListener("click", openNewPostModal);
+document.getElementById("bnProfile")?.addEventListener("click", () => {
+  document.getElementById("openProfileModalBtn")?.click();
+});
+document.getElementById("bnAdmin")?.addEventListener("click", () => {
+  document.getElementById("navAdminBtn")?.click();
+});
+document.getElementById("bnRadio")?.addEventListener("click", () => {
+  document.getElementById("radioModal")?.classList.remove("hidden");
+});
+document.getElementById("closeRadioModalBtn")?.addEventListener("click", () => {
+  document.getElementById("radioModal")?.classList.add("hidden");
+});
+
+// Sincroniza o modal de rádio com o player principal
+function syncRadioModal() {
+  const t = document.getElementById("radioTrackTitle")?.textContent;
+  const a = document.getElementById("radioTrackArtist")?.textContent;
+  if (t) document.getElementById("radioTrackTitle2").textContent = t;
+  if (a) document.getElementById("radioTrackArtist2").textContent = a;
+  document.getElementById("radioCurrentTime2").textContent = document.getElementById("radioCurrentTime")?.textContent || "0:00";
+  document.getElementById("radioDurationTime2").textContent = document.getElementById("radioDurationTime")?.textContent || "0:30";
+  document.getElementById("radioProgressFill2").style.width = document.getElementById("radioProgressFill")?.style.width || "0%";
+  document.getElementById("radioPlayPauseBtn2").textContent = document.getElementById("radioPlayPauseBtn")?.textContent || "▶";
+}
+document.getElementById("radioPlayPauseBtn2")?.addEventListener("click", () => {
+  document.getElementById("radioPlayPauseBtn")?.click();
+  setTimeout(syncRadioModal, 50);
+});
+document.getElementById("radioNextBtn2")?.addEventListener("click", () => {
+  document.getElementById("radioNextBtn")?.click();
+  setTimeout(syncRadioModal, 50);
+});
+document.getElementById("radioContinuousBtn2")?.addEventListener("click", (e) => {
+  document.getElementById("radioContinuousBtn")?.click();
+  e.target.textContent = document.getElementById("radioContinuousBtn")?.textContent || "🔁 Contínua: ON";
+});
+
+// Sincroniza modal de rádio periodicamente quando aberto
+setInterval(() => {
+  const m = document.getElementById("radioModal");
+  if (m && !m.classList.contains("hidden")) syncRadioModal();
+}, 500);
 
 // Inicializar
 initGate();
